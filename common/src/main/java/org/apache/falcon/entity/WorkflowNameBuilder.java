@@ -20,6 +20,7 @@ package org.apache.falcon.entity;
 import org.apache.falcon.Pair;
 import org.apache.falcon.Tag;
 import org.apache.falcon.entity.v0.Entity;
+import org.apache.falcon.util.StartupProperties;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,8 +32,6 @@ import java.util.regex.Pattern;
  * @param <T>
  */
 public class WorkflowNameBuilder<T extends Entity> {
-    private static final String PREFIX = "FALCON";
-
     private T entity;
     private Tag tag;
     private List<String> suffixes;
@@ -50,7 +49,7 @@ public class WorkflowNameBuilder<T extends Entity> {
     }
 
     public WorkflowName getWorkflowName() {
-        return new WorkflowName(PREFIX, entity.getEntityType().name(),
+        return new WorkflowName(WorkflowName.getPrefix(), entity.getEntityType().name(),
                 tag == null ? null : tag.name(), entity.getName(),
                 suffixes == null ? new ArrayList<String>() : suffixes);
     }
@@ -86,6 +85,10 @@ public class WorkflowNameBuilder<T extends Entity> {
             this.suffixes = suffixes;
         }
 
+        public static String getPrefix() {
+            return StartupProperties.get().getProperty("falcon.workflow.nameprefix", "FALCON");
+        }
+        
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder();
@@ -102,8 +105,7 @@ public class WorkflowNameBuilder<T extends Entity> {
 
         public static Pair<Tag, String> getTagAndSuffixes(Entity entity,
                                                           String workflowName) {
-
-            StringBuilder namePattern = new StringBuilder(PREFIX + SEPARATOR
+            StringBuilder namePattern = new StringBuilder(getPrefix() + SEPARATOR
                     + entity.getEntityType().name() + SEPARATOR + "(");
             for (Tag tag : Tag.values()) {
                 namePattern.append(tag.name());

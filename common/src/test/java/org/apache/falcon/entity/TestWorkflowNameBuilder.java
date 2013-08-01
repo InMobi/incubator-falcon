@@ -20,16 +20,48 @@ package org.apache.falcon.entity;
 import org.apache.falcon.Tag;
 import org.apache.falcon.entity.v0.feed.Feed;
 import org.apache.falcon.entity.v0.process.Process;
+import org.apache.falcon.util.StartupProperties;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.Properties;
 
 /**
  * Test for workflow name builder.
  */
 public class TestWorkflowNameBuilder {
 
+    @Test
+    public void testWorkflowPrefix() {
+        Properties props = StartupProperties.get();
+        props.setProperty("falcon.workflow.nameprefix", "IVORY");
+        
+        Feed feed = new Feed();
+        feed.setName("raw-logs");
+
+        WorkflowNameBuilder<Feed> builder = new WorkflowNameBuilder<Feed>(feed);
+        Assert.assertEquals(builder.getWorkflowName().toString(),
+                "IVORY_FEED_raw-logs");
+
+        builder.setTag(Tag.REPLICATION);
+        Assert.assertEquals(builder.getWorkflowName().toString(),
+                "IVORY_FEED_REPLICATION_raw-logs");
+
+        builder.setSuffixes(Arrays.asList("cluster1"));
+        Assert.assertEquals(builder.getWorkflowName().toString(),
+                "IVORY_FEED_REPLICATION_raw-logs_cluster1");
+
+        Process process = new Process();
+        process.setName("agg-logs");
+        WorkflowNameBuilder<Process> processBuilder = new WorkflowNameBuilder<Process>(
+                process);
+        processBuilder.setTag(Tag.DEFAULT);
+        Assert.assertEquals(processBuilder.getWorkflowName().toString(),
+                "IVORY_PROCESS_DEFAULT_agg-logs");
+        props.setProperty("falcon.workflow.nameprefix", "FALCON");
+    }
+    
     @Test
     public void getTagTest() {
         Feed feed = new Feed();
@@ -86,6 +118,5 @@ public class TestWorkflowNameBuilder {
         processBuilder.setTag(Tag.DEFAULT);
         Assert.assertEquals(processBuilder.getWorkflowName().toString(),
                 "FALCON_PROCESS_DEFAULT_agg-logs");
-
     }
 }
