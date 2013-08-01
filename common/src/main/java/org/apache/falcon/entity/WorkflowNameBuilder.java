@@ -88,7 +88,7 @@ public class WorkflowNameBuilder<T extends Entity> {
         public static String getPrefix() {
             return StartupProperties.get().getProperty("falcon.workflow.nameprefix", "FALCON");
         }
-        
+
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder();

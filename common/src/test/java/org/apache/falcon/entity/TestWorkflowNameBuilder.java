@@ -36,7 +36,7 @@ public class TestWorkflowNameBuilder {
     public void testWorkflowPrefix() {
         Properties props = StartupProperties.get();
         props.setProperty("falcon.workflow.nameprefix", "IVORY");
-        
+
         Feed feed = new Feed();
         feed.setName("raw-logs");
 
@@ -61,7 +61,7 @@ public class TestWorkflowNameBuilder {
                 "IVORY_PROCESS_DEFAULT_agg-logs");
         props.setProperty("falcon.workflow.nameprefix", "FALCON");
     }
-    
+
     @Test
     public void getTagTest() {
         Feed feed = new Feed();
