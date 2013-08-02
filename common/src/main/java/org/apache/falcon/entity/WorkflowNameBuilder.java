@@ -68,6 +68,8 @@ public class WorkflowNameBuilder<T extends Entity> {
      * Workflow name.
      */
     public static class WorkflowName {
+        private static final String NAMEPREFIX_DEFAULT = "FALCON";
+
         private static final String SEPARATOR = "_";
 
         private String prefix;
@@ -86,7 +88,7 @@ public class WorkflowNameBuilder<T extends Entity> {
         }
 
         public static String getPrefix() {
-            return StartupProperties.get().getProperty("falcon.workflow.nameprefix", "FALCON");
+            return StartupProperties.get().getProperty("falcon.workflow.nameprefix", NAMEPREFIX_DEFAULT);
         }
 
         @Override
