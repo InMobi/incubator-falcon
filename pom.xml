@@ -182,6 +182,12 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>javax.servlet</groupId>
+                <artifactId>servlet-api</artifactId>
+                <version>2.5</version>
+            </dependency>
+
+            <dependency>
                 <groupId>commons-logging</groupId>
                 <artifactId>commons-logging</artifactId>
                 <version>1.1</version>
@@ -460,6 +466,12 @@
                 <groupId>org.apache.oozie</groupId>
                 <artifactId>oozie-core</artifactId>
                 <version>${oozie.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>javax.servlet</groupId>
+                        <artifactId>servlet-api</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
