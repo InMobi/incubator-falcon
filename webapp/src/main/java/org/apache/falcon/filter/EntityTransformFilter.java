@@ -100,8 +100,8 @@ public class EntityTransformFilter implements Filter {
             String entityXml = writer.toString();
             Matcher matcher = IVORY_NS.matcher(entityXml);
             if (matcher.matches()) {
-                entityXml = entityXml.substring(0, matcher.start(1)) + "falcon" +
-                                                entityXml.substring(matcher.end(1), entityXml.length());
+                entityXml = entityXml.substring(0, matcher.start(1)) + "falcon"
+                                               + entityXml.substring(matcher.end(1), entityXml.length());
                 CustomHttpRequestWrapper requestWrapper = new CustomHttpRequestWrapper(httpRequest,
                         entityXml);
                 chain.doFilter(requestWrapper, response);
