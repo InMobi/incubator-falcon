@@ -43,8 +43,10 @@ import org.testng.annotations.Test;
  * test Entity xml filter.
  */
 public class EntityTransformFilterTest {
-    private static final String IVORY_XML = "<cluster name=\"local\" xmlns=\"uri:ivory:cluster:0.1\"> <path=\"/ivory/data\"/> </cluster>";
-    private static final String FALCON_XML = "<cluster name=\"local\" xmlns=\"uri:falcon:cluster:0.1\"> <path=\"/ivory/data\"/> </cluster>";
+    private static final String IVORY_XML = "<cluster name=\"local\" xmlns=\"uri:ivory:cluster:0.1\"> "
+                                                + "<path=\"/ivory/data\"/> </cluster>";
+    private static final String FALCON_XML = "<cluster name=\"local\" xmlns=\"uri:falcon:cluster:0.1\"> "
+                                                + "<path=\"/ivory/data\"/> </cluster>";
 
     @Mock
     private HttpServletRequest servletRequest;
