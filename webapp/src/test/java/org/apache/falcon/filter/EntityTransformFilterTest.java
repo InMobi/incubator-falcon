@@ -63,7 +63,7 @@ public class EntityTransformFilterTest {
     public void testIvoryXmlFilter() throws IOException, ServletException {
         Mockito.when(servletRequest.getInputStream()).thenReturn(
                 getServletInputStream(IOUtils.toInputStream(IVORY_XML)));
-        Mockito.when(servletRequest.getContextPath()).thenReturn("api/submit");
+        Mockito.when(servletRequest.getPathInfo()).thenReturn("api/submit");
 
         EntityTransformFilter filter = new EntityTransformFilter();
         FilterChain chain = new FilterChain() {
@@ -80,7 +80,7 @@ public class EntityTransformFilterTest {
     public void testFalconXmlFilter() throws IOException, ServletException {
         Mockito.when(servletRequest.getInputStream()).thenReturn(
                 getServletInputStream(IOUtils.toInputStream(FALCON_XML)));
-        Mockito.when(servletRequest.getContextPath()).thenReturn("api/update");
+        Mockito.when(servletRequest.getPathInfo()).thenReturn("api/update");
 
         EntityTransformFilter filter = new EntityTransformFilter();
         FilterChain chain = new FilterChain() {
