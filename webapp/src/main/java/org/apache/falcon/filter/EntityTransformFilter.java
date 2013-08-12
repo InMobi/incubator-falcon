@@ -44,7 +44,8 @@ import org.apache.falcon.resource.proxy.BufferedRequest;
  * Entity xml filter to replace 'ivory' with 'falcon'.
  */
 public class EntityTransformFilter implements Filter {
-    public static final Pattern IVORY_NS = Pattern.compile(".*xmlns=\"uri:(ivory):(cluster|feed|process):0\\.1\".*");
+    public static final Pattern IVORY_NS = Pattern.compile(".*xmlns=\"uri:(ivory):(cluster|feed|process):0\\.1\".*",
+                                                                            Pattern.DOTALL);
 
     /**
      * Request wrapper to override input stream.
@@ -90,10 +91,10 @@ public class EntityTransformFilter implements Filter {
         }
         HttpServletRequest httpRequest = (HttpServletRequest) request;
 
-        String contextPath = httpRequest.getContextPath();
+        String pathInfo = httpRequest.getPathInfo();
         BufferedRequest bufferedRequest = new BufferedRequest(httpRequest);
-        if (contextPath.contains("submit") || contextPath.contains("update")
-                || contextPath.contains("submitAndSchedule")) {
+        if (pathInfo.contains("submit") || pathInfo.contains("update")
+                || pathInfo.contains("submitAndSchedule")) {
             StringWriter writer = new StringWriter();
             IOUtils.copy(bufferedRequest.getInputStream(), writer);
             bufferedRequest.getInputStream().reset();
