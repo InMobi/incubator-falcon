@@ -33,6 +33,23 @@
 
     <profiles>
         <profile>
+            <id>hadoop-1</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>hadoop.profile</name>
+                    <value>1</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-core</artifactId>
+                </dependency>
+            </dependencies>
+        </profile>
+    
+        <profile>
             <id>hadoop-2</id>
             <activation>
                 <property>
@@ -41,9 +58,9 @@
                 </property>
             </activation>
             <dependencies>
-                <dependency>
+                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-common</artifactId>
+                    <artifactId>hadoop-client</artifactId>
                 </dependency>
             </dependencies>
         </profile>

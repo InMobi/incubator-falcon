@@ -5,6 +5,8 @@ Trunk (Unreleased)
   INCOMPATIBLE CHANGES
 
   NEW FEATURES
+    FALCON-62 Falcon compilation with hadoop 2.0 libs. (Shwetha GS
+    via Srikanth Sundarrajan)
 
   IMPROVEMENTS
     FALCON-80 Option in falcon-start to not start embedded activemq.
@@ -15,6 +17,12 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-79 Fix typos in Falcon architecture document. (Suresh Srinivas
+    via Srikanth Sundarrajan)
+
+    FALCON-72 Feeds with invalid oozie URI in cluster cannot be deleted.
+    (Venkatesh Seetharam vi Shwetha GS)
+
     FALCON-78 Falcon error when prism on one hadoop version and server 
     on another. (Shwetha GS via Srikanth Sundarrajan)
 

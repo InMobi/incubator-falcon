@@ -59,12 +59,24 @@
             <dependencies>
                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-core</artifactId>
+                    <artifactId>hadoop-client</artifactId>
                 </dependency>
+                
                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-hdfs</artifactId>
+                    <classifier>tests</classifier>
                 </dependency>
+                
+                <dependency>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
+                </dependency>
+                
+                <dependency>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-yarn-server-nodemanager</artifactId>
+                </dependency>                    
             </dependencies>
         </profile>
     </profiles>
@@ -73,6 +85,11 @@
         <dependency>
             <groupId>org.apache.falcon</groupId>
             <artifactId>falcon-oozie-el-extension</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>activemq-core</artifactId>
         </dependency>
     </dependencies>
 

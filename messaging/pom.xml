@@ -62,15 +62,9 @@
                 </property>
             </activation>
             <dependencies>
-                <dependency>
+                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-common</artifactId>
-                    <classifier>tests</classifier>
-                    <scope>test</scope>
-                </dependency>
-                <dependency>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-common</artifactId>
+                    <artifactId>hadoop-client</artifactId>
                 </dependency>
             </dependencies>
         </profile>

@@ -97,9 +97,6 @@
         <include.prism>true</include.prism>
 
         <slf4j.version>1.2</slf4j.version>
-        <hadoop.profile>1</hadoop.profile>
-        <hadoop.version>1.1.2</hadoop.version>
-        <hadoop.mr.version>1.1.2</hadoop.mr.version>
         <oozie.version>3.2.2</oozie.version>
         <activemq.version>5.4.3</activemq.version>
         <hadoop-distcp.version>0.3</hadoop-distcp.version>
@@ -107,6 +104,117 @@
         <internal.maven.repo>file:///tmp/falcontemprepo</internal.maven.repo>
         <skipCheck>false</skipCheck>
     </properties>
+
+    <profiles>
+        <profile>
+            <id>hadoop-1</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>hadoop.profile</name>
+                    <value>1</value>
+                </property>
+            </activation>
+            <properties>
+                <hadoop.profile>1</hadoop.profile>
+                <hadoop.version>1.1.2</hadoop.version>
+            </properties>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-core</artifactId>
+                        <version>${hadoop.version}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>org.eclipse.jdt</groupId>
+                                <artifactId>core</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>tomcat</groupId>
+                                <artifactId>jasper-runtime</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>tomcat</groupId>
+                                <artifactId>jasper-compiler</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+        
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-test</artifactId>
+                        <version>${hadoop.version}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>org.apache.ftpserver</groupId>
+                                <artifactId>ftpserver-core</artifactId>
+                            </exclusion>
+                            <exclusion>
+                                <groupId>org.apache.ftpserver</groupId>
+                                <artifactId>ftpserver-deprecated</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                </dependencies>
+            </dependencyManagement>
+        </profile>
+
+        <profile>
+            <id>hadoop-2</id>
+            <activation>
+                <property>
+                    <name>hadoop.profile</name>
+                    <value>2</value>
+                </property>
+            </activation>
+            <properties>
+                <hadoop.profile>2</hadoop.profile>
+                <hadoop.version>2.0.2-alpha</hadoop.version>
+            </properties>
+            <dependencyManagement>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-client</artifactId>
+                        <version>${hadoop.version}</version>
+                        <exclusions>
+                            <exclusion>
+                                <groupId>org.glassfish</groupId>
+                                <artifactId>javax.servlet</artifactId>
+                            </exclusion>
+                        </exclusions>
+                    </dependency>
+                    
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-hdfs</artifactId>
+                        <version>${hadoop.version}</version>
+                        <classifier>tests</classifier>
+                    </dependency>
+                    
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-common</artifactId>
+                        <version>${hadoop.version}</version>
+                        <classifier>tests</classifier>
+                    </dependency>
+                    
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-yarn-server-resourcemanager</artifactId>
+                        <version>${hadoop.version}</version>
+                    </dependency>
+                    
+                    <dependency>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-yarn-server-nodemanager</artifactId>
+                        <version>${hadoop.version}</version>
+                    </dependency>                    
+                </dependencies>
+            </dependencyManagement>
+        </profile>
+    </profiles>
 
     <modules>
         <module>client</module>
@@ -516,13 +624,17 @@
                 <artifactId>oozie-core</artifactId>
                 <version>${oozie.version}</version>
                 <exclusions>
-                     <exclusion>
+                    <exclusion>
                         <groupId>org.apache.hadoop</groupId>
                         <artifactId>hadoop-auth</artifactId>
                     </exclusion>
-                   <exclusion>
+                    <exclusion>
                         <groupId>javax.servlet</groupId>
                         <artifactId>servlet-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.servlet.jsp</groupId>
+                        <artifactId>jsp-api</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -541,43 +653,13 @@
             </dependency>
 
             <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-core</artifactId>
-                <version>${hadoop.mr.version}</version>
-                <exclusions>
-                    <exclusion>
-                        <groupId>org.eclipse.jdt</groupId>
-                        <artifactId>core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>tomcat</groupId>
-                        <artifactId>jasper-runtime</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>tomcat</groupId>
-                        <artifactId>jasper-compiler</artifactId>
-                    </exclusion>
-                </exclusions>
-            </dependency>
-
-            <dependency>
                 <groupId>org.apache.hadoop.inmobi.tools</groupId>
                 <artifactId>hadoop-distcp</artifactId>
                 <version>${hadoop-distcp.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>org.apache.hadoop</groupId>
-                <artifactId>hadoop-test</artifactId>
-                <version>${hadoop.mr.version}</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>org.apache.ftpserver</groupId>
-                        <artifactId>ftpserver-core</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.apache.ftpserver</groupId>
-                        <artifactId>ftpserver-deprecated</artifactId>
+                        <groupId>org.apache.hadoop</groupId>
+                        <artifactId>hadoop-core</artifactId>
                     </exclusion>
                 </exclusions>
             </dependency>
@@ -912,6 +994,8 @@
                         <exclude>**/.settings/**</exclude>
                         <exclude>**/test-output/**</exclude>
                         <exclude>**/data.txt</exclude>
+                        <exclude>**/maven-eclipse.xml</exclude>
+                        <exclude>**/.externalToolBuilders/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>
