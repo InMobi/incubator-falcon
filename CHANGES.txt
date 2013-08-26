@@ -9,6 +9,12 @@ Trunk (Unreleased)
     via Srikanth Sundarrajan)
 
   IMPROVEMENTS
+    FALCON-83 Option to build distributed packages. (Shwetha GS via
+    Srikanth Sundarrajan)
+
+    FALCON-73 Remove JUnit dependency as its used only for asserts while 
+    TestNG for tests. (Srikanth Sundarrajan)
+
     FALCON-80 Option in falcon-start to not start embedded activemq.
     (Shwetha GS via Srikanth Sundarrajan)
 
@@ -17,6 +23,9 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-71 mvn jetty:run doesn't work. (Srikanth Sundarrajan via 
+    Shwetha GS)
+
     FALCON-79 Fix typos in Falcon architecture document. (Suresh Srinivas
     via Srikanth Sundarrajan)
 
