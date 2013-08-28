@@ -141,6 +141,7 @@
     </profiles>
 
     <modules>
+        <module>build-tools</module>
         <module>client</module>
         <module>metrics</module>
         <module>common</module>
@@ -159,7 +160,6 @@
         <module>prism</module>
         <module>webapp</module>
         <module>docs</module>
-        <module>build-tools</module>
     </modules>
 
     <repositories>
