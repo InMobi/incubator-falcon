@@ -215,6 +215,14 @@
                 <enabled>false</enabled>
             </snapshots>
         </repository>
+        <repository>
+            <id>inmobi.repo</id>
+            <url>http://maven.scm.corp.inmobi.com/content/repositories/releases/</url>
+            <name>InMobi Repository</name>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
     </repositories>
 
     <scm>
