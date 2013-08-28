@@ -225,7 +225,7 @@
     </repositories>
 
     <scm>
-        <connection>scm:git:git://github.com/InMobi/incubator-falcon.git</connection>
+        <connection>scm:git:https://github.com/InMobi/incubator-falcon.git</connection>
         <developerConnection>scm:git:https://github.com/InMobi/incubator-falcon.git</developerConnection>
         <url>scm:git:https://github.com/InMobi/incubator-falcon.git</url>
         <tag>HEAD</tag>
