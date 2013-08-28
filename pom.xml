@@ -80,12 +80,6 @@
         </mailingList>
     </mailingLists>
 
-    <scm>
-        <connection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-falcon.git</connection>
-        <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-falcon.git</developerConnection>
-        <url>https://git-wip-us.apache.org/repos/asf/incubator-falcon.git</url>
-    </scm>
-
     <distributionManagement>
         <repository>
             <id>internal.repo</id>
