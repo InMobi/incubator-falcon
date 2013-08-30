@@ -50,6 +50,11 @@
         <servlet-name>FalconRESTApi</servlet-name>
     </filter-mapping>
 
+    <filter-mapping>
+        <filter-name>entityTransform</filter-name>
+        <servlet-name>SecureApi</servlet-name>
+    </filter-mapping>
+
     <listener>
         <listener-class>org.apache.falcon.listener.ContextStartupListener</listener-class>
     </listener>
