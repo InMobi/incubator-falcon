@@ -91,6 +91,11 @@
             <outputDirectory>server/webapp</outputDirectory>
             <destName>falcon.war</destName>
         </file>
+
+        <file>
+            <source>hadoop-webapp/target/oozie/WEB-INF/lib/s4fs-0.1.jar</source>
+            <outputDirectory>libext</outputDirectory>
+        </file>
     </files>
 </assembly>
     
