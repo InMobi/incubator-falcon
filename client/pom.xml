@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.apache.falcon</groupId>
         <artifactId>falcon-main</artifactId>
-        <version>0.4.2-incubating-SNAPSHOT</version>
+        <version>0.4.3-incubating-SNAPSHOT</version>
     </parent>
     <artifactId>falcon-client</artifactId>
     <description>Apache Falcon CLI client</description>
