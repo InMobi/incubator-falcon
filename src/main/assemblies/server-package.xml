@@ -54,6 +54,7 @@
                 <include>falcon-stop</include>
                 <include>service-start.sh</include>
                 <include>service-stop.sh</include>
+                <include>migrate.sh</include>
             </includes>
         </fileSet>
 
