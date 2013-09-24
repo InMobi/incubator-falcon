@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.apache.falcon</groupId>
         <artifactId>falcon-main</artifactId>
-        <version>0.4.4-incubating</version>
+        <version>0.4.5-incubating-SNAPSHOT</version>
     </parent>
     <artifactId>falcon-feed</artifactId>
     <description>Apache Falcon Feed Module</description>

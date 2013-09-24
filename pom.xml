@@ -25,7 +25,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.apache.falcon</groupId>
     <artifactId>falcon-main</artifactId>
-    <version>0.4.4-incubating</version>
+    <version>0.4.5-incubating-SNAPSHOT</version>
     <description>Data Management and Processing Platform over Hadoop</description>
     <name>Apache Falcon</name>
     <packaging>pom</packaging>
@@ -229,7 +229,7 @@
         <connection>scm:git:https://github.com/InMobi/incubator-falcon.git</connection>
         <developerConnection>scm:git:https://github.com/InMobi/incubator-falcon.git</developerConnection>
         <url>scm:git:https://github.com/InMobi/incubator-falcon.git</url>
-        <tag>falcon-main-0.4.4-incubating</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <dependencyManagement>
