@@ -27,7 +27,7 @@ fi
 function migrate() {
 SRC=$1
 TARGET=$2
-rmdir $HOME/migrate-backup
+rm -rf $HOME/migrate-backup
 mkdir $HOME/migrate-backup
 hadoop fs -mkdir $TARGET
 
@@ -40,13 +40,13 @@ for entity in CLUSTER FEED PROCESS; do
     if [[ $first -eq 0 ]]; then
       echo "Migrating $path"
       file=`echo $path | rev | cut -d'/' -f1 | rev`
-      hadoop fs -cat $path | sed -e "s/ivory/falcon/" > $HOME/migrate-backup/$entity/$file
+      hadoop fs -cat $path | sed '0,/ivory/s/ivory/falcon/' > $HOME/migrate-backup/$entity/$file
       hadoop fs -put $HOME/migrate-backup/$entity/$file $TARGET/$entity/$file
     fi
     first=0
   done
 done
-rmdir $HOME/migrate-backup
+rm -rf $HOME/migrate-backup
 }
 
 migrate $1 $2
