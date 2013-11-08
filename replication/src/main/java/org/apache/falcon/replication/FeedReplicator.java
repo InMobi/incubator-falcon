@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 public class FeedReplicator extends Configured implements Tool {
 
     private static final Logger LOG = Logger.getLogger(FeedReplicator.class);
+    public static final String BANDWIDTH_OPTION = "bandwidth";
 
     public static void main(String[] args) throws Exception {
         ToolRunner.run(new Configuration(), new FeedReplicator(), args);
@@ -131,6 +132,10 @@ public class FeedReplicator extends Configured implements Tool {
         opt.setRequired(true);
         options.addOption(opt);
 
+        opt = new Option(BANDWIDTH_OPTION, true, BANDWIDTH_OPTION);
+        opt.setRequired(false);
+        options.addOption(opt);
+
         CommandLine cmd = new GnuParser().parse(options, args);
         String[] paths = cmd.getOptionValue("sourcePaths").trim().split(",");
         List<Path> srcPaths = getPaths(paths);
@@ -142,6 +147,9 @@ public class FeedReplicator extends Configured implements Tool {
         distcpOptions.setBlocking(true);
         distcpOptions
                 .setMaxMaps(Integer.valueOf(cmd.getOptionValue("maxMaps")));
+        if (cmd.hasOption(BANDWIDTH_OPTION)) {
+            distcpOptions.setMapBandwidth(Integer.valueOf(cmd.getOptionValue(BANDWIDTH_OPTION)));
+        }
 
         return distcpOptions;
     }
