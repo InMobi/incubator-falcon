@@ -31,6 +31,9 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-241 The job logs are not copied during Post-Processing step in Replication workflows.
+    (Suhas Vasu via Shwetha GS)
+
     FALCON-206 Process update for wf changes. (Shwetha GS)
 
     FALCON-236 Falcon process output events which is optional should have at least one event
