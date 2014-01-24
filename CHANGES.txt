@@ -33,6 +33,9 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-260 When a process is scheduled, the user workflow is failing with OozieClientException.
+    (Shwetha GS)
+
     FALCON-258 Falcon status throws an error when external jobids are missing (Suhas Vasu via Shaik Idris)
 
     FALCON-241 The job logs are not copied during Post-Processing step in Replication workflows.
