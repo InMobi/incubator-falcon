@@ -31,6 +31,9 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-236 Falcon process output events which is optional should have at least one event
+    if defined. (Shaik Idris Ali via Shwetha GS)
+
     FALCON-185 Timestamp handled as int (Shwetha GS via Venkatesh Seetharam)
 
     FALCON-24 Allow re-run of timedout instances. (Samarth Gupta via 
