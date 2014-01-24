@@ -129,4 +129,5 @@ Release Version: 0.3
     FALCON-10 Add findbugs plugin and fix findbugs warnings for project (Venkatesh
     Seetharam via Srikanth Sundarrajan) 
 
+    FALCON-124 unable to schedule deleted feed. (Shwetha GS via Shaik Idris)
 
