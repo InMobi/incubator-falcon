@@ -33,6 +33,8 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-258 Falcon status throws an error when external jobids are missing (Suhas Vasu via Shaik Idris)
+
     FALCON-241 The job logs are not copied during Post-Processing step in Replication workflows.
     (Suhas Vasu via Shwetha GS)
 
