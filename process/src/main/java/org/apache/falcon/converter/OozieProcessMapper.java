@@ -53,19 +53,24 @@ import org.apache.falcon.oozie.workflow.DELETE;
 import org.apache.falcon.oozie.workflow.PIG;
 import org.apache.falcon.oozie.workflow.PREPARE;
 import org.apache.falcon.oozie.workflow.WORKFLOWAPP;
+import org.apache.falcon.update.UpdateHelper;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 /**
  * This class maps the Falcon entities into Oozie artifacts.
  */
 public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
-
     private static final String DEFAULT_WF_TEMPLATE = "/config/workflow/process-parent-workflow.xml";
     private static final int THIRTY_MINUTES = 30 * 60 * 1000;
 
@@ -73,12 +78,87 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
         super(entity);
     }
 
+    private void mkdir(FileSystem fs, Path path) throws FalconException {
+        try {
+            if (!fs.exists(path) && !fs.mkdirs(path)) {
+                throw new FalconException("mkdir failed for " + path);
+            }
+        } catch (IOException e) {
+            throw new FalconException("mkdir failed for " + path, e);
+        }
+    }
+
     @Override
     protected List<COORDINATORAPP> getCoordinators(Cluster cluster, Path bundlePath) throws FalconException {
+        try {
+            FileSystem fs = ClusterHelper.getFileSystem(cluster);
+            Process process = getEntity();
+
+            //Copy user workflow and lib to staging dir
+            Map<String, String> checksums = UpdateHelper.checksumAndCopy(fs, new Path(process.getWorkflow().getPath()),
+                    new Path(bundlePath, EntityUtil.PROCESS_USER_DIR));
+            if (process.getWorkflow().getLib() != null && fs.exists(new Path(process.getWorkflow().getLib()))) {
+                checksums.putAll(UpdateHelper.checksumAndCopy(fs, new Path(process.getWorkflow().getLib()),
+                        new Path(bundlePath, EntityUtil.PROCESS_USERLIB_DIR)));
+            }
+
+            writeChecksums(fs, new Path(bundlePath, EntityUtil.PROCESS_CHECKSUM_FILE), checksums);
+        } catch (IOException e) {
+            throw new FalconException("Failed to copy user workflow/lib", e);
+        }
+
         List<COORDINATORAPP> apps = new ArrayList<COORDINATORAPP>();
         apps.add(createDefaultCoordinator(cluster, bundlePath));
 
         return apps;
+    }
+
+    private void writeChecksums(FileSystem fs, Path path, Map<String, String> checksums) throws FalconException {
+        try {
+            FSDataOutputStream stream = fs.create(path);
+            try {
+                for (Map.Entry<String, String> entry : checksums.entrySet()) {
+                    stream.write((entry.getKey() + "=" + entry.getValue() + "\n").getBytes());
+                }
+            } finally {
+                stream.close();
+            }
+        } catch (IOException e) {
+            throw new FalconException("Failed to copy user workflow/lib", e);
+        }
+    }
+
+    private Path getUserWorkflowPath(Cluster cluster, Path bundlePath) throws FalconException {
+        try {
+            FileSystem fs = FileSystem.get(ClusterHelper.getConfiguration(cluster));
+            Process process = getEntity();
+            Path wfPath = new Path(process.getWorkflow().getPath());
+            if (fs.isFile(wfPath)) {
+                return new Path(bundlePath, EntityUtil.PROCESS_USER_DIR + "/" + wfPath.getName().toString());
+            } else {
+                return new Path(bundlePath, EntityUtil.PROCESS_USER_DIR);
+            }
+        } catch(IOException e) {
+            throw new FalconException("Failed to get workflow path", e);
+        }
+    }
+
+    private Path getUserLibPath(Cluster cluster, Path bundlePath) throws FalconException {
+        try {
+            FileSystem fs = FileSystem.get(ClusterHelper.getConfiguration(cluster));
+            Process process = getEntity();
+            if (process.getWorkflow().getLib() == null) {
+                return null;
+            }
+            Path libPath = new Path(process.getWorkflow().getLib());
+            if (fs.isFile(libPath)) {
+                return new Path(bundlePath, EntityUtil.PROCESS_USERLIB_DIR + "/" + libPath.getName().toString());
+            } else {
+                return new Path(bundlePath, EntityUtil.PROCESS_USERLIB_DIR);
+            }
+        } catch(IOException e) {
+            throw new FalconException("Failed to get user lib path", e);
+        }
     }
 
     /**
@@ -332,7 +412,7 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
     }
 
     private void createWorkflow(Cluster cluster, Process process, Workflow processWorkflow,
-                                String wfName, Path wfPath) throws FalconException {
+                                String wfName, Path parentWfPath) throws FalconException {
         WORKFLOWAPP wfApp = getWorkflowTemplate(DEFAULT_WF_TEMPLATE);
         wfApp.setName(wfName);
         try {
@@ -341,6 +421,7 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
             throw new FalconException("Failed to add library extensions for the workflow", e);
         }
 
+        String userWfPath = getUserWorkflowPath(cluster, parentWfPath.getParent()).toString();
         EngineType engineType = processWorkflow.getEngine();
         for (Object object : wfApp.getDecisionOrForkOrJoin()) {
             if (!(object instanceof ACTION)) {
@@ -351,27 +432,27 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
             ACTION action = (ACTION) object;
             String actionName = action.getName();
             if (engineType == EngineType.OOZIE && actionName.equals("user-oozie-workflow")) {
-                action.getSubWorkflow().setAppPath(storagePath);
+                action.getSubWorkflow().setAppPath("${nameNode}" + userWfPath);
             } else if (engineType == EngineType.PIG && actionName.equals("user-pig-job")) {
-                decoratePIGAction(cluster, process, processWorkflow, storagePath, action.getPig());
+                decoratePIGAction(cluster, process, processWorkflow, action.getPig(), parentWfPath);
             }
         }
 
-        marshal(cluster, wfApp, wfPath);
+        marshal(cluster, wfApp, parentWfPath);
     }
 
     private void decoratePIGAction(Cluster cluster, Process process, Workflow processWorkflow,
-                                   String storagePath, PIG pigAction) throws FalconException {
-
-        pigAction.setScript(storagePath);
-
+                                   PIG pigAction, Path parentWfPath) throws FalconException {
+        Path userWfPath = getUserWorkflowPath(cluster, parentWfPath.getParent());
+        pigAction.setScript("${nameNode}" + userWfPath.toString());
         addPrepareDeleteOutputPath(process, pigAction);
 
         addInputOutputFeedsAsParams(pigAction, process);
 
         propagateProcessProperties(pigAction, process);
 
-        addArchiveForCustomJars(cluster, processWorkflow, pigAction);
+        addArchiveForCustomJars(cluster, processWorkflow, pigAction.getArchive(),
+                getUserLibPath(cluster, parentWfPath.getParent()));
     }
 
     private void addPrepareDeleteOutputPath(Process process, PIG pigAction) {
@@ -425,17 +506,15 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
     }
 
     private void addArchiveForCustomJars(Cluster cluster, Workflow processWorkflow,
-                                         PIG pigAction) throws FalconException {
-        String processWorkflowLib = processWorkflow.getLib();
-        if (processWorkflowLib == null) {
+                                         List<String> archiveList, Path libPath) throws FalconException {
+        if (libPath == null) {
             return;
         }
 
-        Path libPath = new Path(processWorkflowLib);
         try {
             final FileSystem fs = libPath.getFileSystem(ClusterHelper.getConfiguration(cluster));
             if (fs.isFile(libPath)) {  // File, not a Dir
-                pigAction.getArchive().add(processWorkflowLib);
+                archiveList.add(libPath.toString());
                 return;
             }
 
@@ -452,7 +531,7 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
             });
 
             for (FileStatus fileStatus : fileStatuses) {
-                pigAction.getArchive().add(fileStatus.getPath().toString());
+                archiveList.add(fileStatus.getPath().toString());
             }
         } catch (IOException e) {
             throw new FalconException("Error adding archive for custom jars under: " + libPath, e);

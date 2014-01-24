@@ -17,13 +17,17 @@
  */
 package org.apache.falcon.replication;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.falcon.entity.EntityUtil;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
 import org.apache.hadoop.tools.DistCp;
 import org.apache.hadoop.tools.DistCpOptions;
 import org.apache.hadoop.util.Tool;
@@ -81,8 +85,8 @@ public class FeedReplicator extends Configured implements Tool {
         FileStatus[] files = fs.globStatus(new Path(targetPath.toString() + "/" + fixedPath));
         if (files != null) {
             for (FileStatus file : files) {
-                fs.create(new Path(file.getPath(), FileOutputCommitter.SUCCEEDED_FILE_NAME)).close();
-                LOG.info("Created " + new Path(file.getPath(), FileOutputCommitter.SUCCEEDED_FILE_NAME));
+                fs.create(new Path(file.getPath(), EntityUtil.SUCCEEDED_FILE_NAME)).close();
+                LOG.info("Created " + new Path(file.getPath(), EntityUtil.SUCCEEDED_FILE_NAME));
             }
         } else {
             LOG.info("No files present in path: "
