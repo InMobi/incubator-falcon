@@ -5,12 +5,17 @@ Trunk (Unreleased)
   INCOMPATIBLE CHANGES
 
   NEW FEATURES
+    FALCON-238 Support updates at specific time. (Shwetha GS)
+
     FALCON-107 Adding extensions. (Shwetha GS)
 
     FALCON-62 Falcon compilation with hadoop 2.0 libs. (Shwetha GS
     via Srikanth Sundarrajan)
 
   IMPROVEMENTS
+    FALCON-69 exception from ConfigurationChangeListener should fail 
+    the API. (Shwetha GS via Srikanth Sundarrajan)
+
     FALCON-63 Ability to ingest hadoop libs to falcon release package.
     (Suhas Vasu via Shwetha GS)
 
@@ -28,6 +33,24 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-260 When a process is scheduled, the user workflow is failing with OozieClientException.
+    (Shwetha GS)
+
+    FALCON-258 Falcon status throws an error when external jobids are missing (Suhas Vasu via Shaik Idris)
+
+    FALCON-241 The job logs are not copied during Post-Processing step in Replication workflows.
+    (Suhas Vasu via Shwetha GS)
+
+    FALCON-206 Process update for wf changes. (Shwetha GS)
+
+    FALCON-236 Falcon process output events which is optional should have at least one event
+    if defined. (Shaik Idris Ali via Shwetha GS)
+
+    FALCON-185 Timestamp handled as int (Shwetha GS via Venkatesh Seetharam)
+
+    FALCON-24 Allow re-run of timedout instances. (Samarth Gupta via 
+    Shwetha GS)
+
     FALCON-128 Feed replication post processing log mover error. (Shwetha GS)
 
     FALCON-127 Fix test issues after FALCON-107. (Shwetha GS via Srikanth
@@ -121,4 +144,5 @@ Release Version: 0.3
     FALCON-10 Add findbugs plugin and fix findbugs warnings for project (Venkatesh
     Seetharam via Srikanth Sundarrajan) 
 
+    FALCON-124 unable to schedule deleted feed. (Shwetha GS via Shaik Idris)
 
