@@ -13,6 +13,9 @@ Trunk (Unreleased)
     via Srikanth Sundarrajan)
 
   IMPROVEMENTS
+    FALCON-38 Falcon's parent workflow actions (pre-processing & post-processing) 
+    should have mulitple retries. (Shaik Idris via Shaik Idris)
+	
     FALCON-69 exception from ConfigurationChangeListener should fail 
     the API. (Shwetha GS via Srikanth Sundarrajan)
 

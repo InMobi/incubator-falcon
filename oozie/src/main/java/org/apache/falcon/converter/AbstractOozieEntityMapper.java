@@ -39,6 +39,7 @@ import org.apache.falcon.oozie.workflow.ACTION;
 import org.apache.falcon.oozie.workflow.WORKFLOWAPP;
 import org.apache.falcon.service.FalconPathFilter;
 import org.apache.falcon.service.SharedLibraryHostingService;
+import org.apache.falcon.util.RuntimeProperties;
 import org.apache.falcon.util.StartupProperties;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -49,9 +50,7 @@ import org.apache.oozie.client.OozieClient;
 
 import javax.xml.bind.*;
 import java.io.*;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
 
 /**
@@ -72,6 +71,9 @@ public abstract class AbstractOozieEntityMapper<T extends Entity> {
     protected static final JAXBContext WORKFLOW_JAXB_CONTEXT;
     protected static final JAXBContext COORD_JAXB_CONTEXT;
     protected static final JAXBContext BUNDLE_JAXB_CONTEXT;
+    public static final Set<String> FALCON_ACTIONS = new HashSet<String>(Arrays.asList(new String[]{"recordsize",
+        "succeeded-post-processing", "failed-post-processing", "eviction", "jms-messaging", }));
+
 
     protected static final FalconPathFilter FALCON_JAR_FILTER = new FalconPathFilter() {
         @Override
@@ -380,4 +382,11 @@ public abstract class AbstractOozieEntityMapper<T extends Entity> {
             IOUtils.closeQuietly(resourceAsStream);
         }
     }
+
+    protected void decorateWithOozieRetries(ACTION action) {
+        Properties props = RuntimeProperties.get();
+        action.setRetryMax(props.getProperty("falcon.parentworkflow.retry.max", "3"));
+        action.setRetryInterval(props.getProperty("falcon.parentworkflow.retry.interval.secs", "1"));
+    }
+
 }

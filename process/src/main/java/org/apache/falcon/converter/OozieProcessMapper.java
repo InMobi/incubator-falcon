@@ -435,6 +435,8 @@ public class OozieProcessMapper extends AbstractOozieEntityMapper<Process> {
                 action.getSubWorkflow().setAppPath("${nameNode}" + userWfPath);
             } else if (engineType == EngineType.PIG && actionName.equals("user-pig-job")) {
                 decoratePIGAction(cluster, process, processWorkflow, action.getPig(), parentWfPath);
+            } else if (FALCON_ACTIONS.contains(actionName)) {
+                decorateWithOozieRetries(action);
             }
         }
 

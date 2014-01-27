@@ -330,6 +330,7 @@ public class OozieFeedMapper extends AbstractOozieEntityMapper<Feed> {
             WORKFLOWAPP repWFapp = getWorkflowTemplate(REPLICATION_WF_TEMPLATE);
             repWFapp.setName(wfName);
             addLibExtensionsToWorkflow(cluster, repWFapp, EntityType.FEED, "replication");
+            addOozieRetries(repWFapp);
             marshal(cluster, repWFapp, wfPath);
         } catch(IOException e) {
             throw new FalconException("Unable to create replication workflow", e);
@@ -341,6 +342,7 @@ public class OozieFeedMapper extends AbstractOozieEntityMapper<Feed> {
             WORKFLOWAPP retWfApp = getWorkflowTemplate(RETENTION_WF_TEMPLATE);
             retWfApp.setName(wfName);
             addLibExtensionsToWorkflow(cluster, retWfApp, EntityType.FEED, "retention");
+            addOozieRetries(retWfApp);
             marshal(cluster, retWfApp, wfPath);
         } catch(IOException e) {
             throw new FalconException("Unable to create retention workflow", e);
@@ -372,5 +374,18 @@ public class OozieFeedMapper extends AbstractOozieEntityMapper<Feed> {
             }
         }
         return null;
+    }
+
+    private void addOozieRetries(WORKFLOWAPP workflow) {
+        for (Object object : workflow.getDecisionOrForkOrJoin()) {
+            if (!(object instanceof org.apache.falcon.oozie.workflow.ACTION)) {
+                continue;
+            }
+            org.apache.falcon.oozie.workflow.ACTION action = (org.apache.falcon.oozie.workflow.ACTION) object;
+            String actionName = action.getName();
+            if (FALCON_ACTIONS.contains(actionName)) {
+                decorateWithOozieRetries(action);
+            }
+        }
     }
 }
