@@ -27,6 +27,7 @@ import org.apache.falcon.entity.v0.SchemaHelper;
 import org.apache.falcon.resource.APIResult;
 import org.apache.falcon.resource.EntityList;
 import org.apache.falcon.resource.InstancesResult;
+import org.apache.falcon.resource.InstancesSummaryResult;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.MediaType;
@@ -40,6 +41,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -103,20 +105,18 @@ public class FalconClient {
      * Methods allowed on Entity Resources.
      */
     protected static enum Entities {
-        VALIDATE("api/entities/validate/", HttpMethod.POST, MediaType.TEXT_XML), SUBMIT(
-                "api/entities/submit/", HttpMethod.POST, MediaType.TEXT_XML), UPDATE(
-                "api/entities/update/", HttpMethod.POST, MediaType.TEXT_XML), SUBMITandSCHEDULE(
-                "api/entities/submitAndSchedule/", HttpMethod.POST,
-                MediaType.TEXT_XML), SCHEDULE("api/entities/schedule/",
-                HttpMethod.POST, MediaType.TEXT_XML), SUSPEND(
-                "api/entities/suspend/", HttpMethod.POST, MediaType.TEXT_XML), RESUME(
-                "api/entities/resume/", HttpMethod.POST, MediaType.TEXT_XML), DELETE(
-                "api/entities/delete/", HttpMethod.DELETE, MediaType.TEXT_XML), STATUS(
-                "api/entities/status/", HttpMethod.GET, MediaType.TEXT_XML), DEFINITION(
-                "api/entities/definition/", HttpMethod.GET, MediaType.TEXT_XML), LIST(
-                "api/entities/list/", HttpMethod.GET, MediaType.TEXT_XML), DEPENDENCY(
-                "api/entities/dependencies/", HttpMethod.GET,
-                MediaType.TEXT_XML);
+        VALIDATE("api/entities/validate/", HttpMethod.POST, MediaType.TEXT_XML),
+        SUBMIT("api/entities/submit/", HttpMethod.POST, MediaType.TEXT_XML),
+        UPDATE("api/entities/update/", HttpMethod.POST, MediaType.TEXT_XML),
+        SUBMITandSCHEDULE("api/entities/submitAndSchedule/", HttpMethod.POST, MediaType.TEXT_XML),
+        SCHEDULE("api/entities/schedule/", HttpMethod.POST, MediaType.TEXT_XML),
+        SUSPEND("api/entities/suspend/", HttpMethod.POST, MediaType.TEXT_XML),
+        RESUME("api/entities/resume/", HttpMethod.POST, MediaType.TEXT_XML),
+        DELETE("api/entities/delete/", HttpMethod.DELETE, MediaType.TEXT_XML),
+        STATUS("api/entities/status/", HttpMethod.GET, MediaType.TEXT_XML),
+        DEFINITION("api/entities/definition/", HttpMethod.GET, MediaType.TEXT_XML),
+        LIST("api/entities/list/", HttpMethod.GET, MediaType.TEXT_XML),
+        DEPENDENCY("api/entities/dependencies/", HttpMethod.GET, MediaType.TEXT_XML);
 
         private String path;
         private String method;
@@ -133,16 +133,14 @@ public class FalconClient {
      * Methods allowed on Process Instance Resources.
      */
     protected static enum Instances {
-        RUNNING("api/instance/running/", HttpMethod.GET,
-                MediaType.APPLICATION_JSON), STATUS("api/instance/status/",
-                HttpMethod.GET, MediaType.APPLICATION_JSON), KILL(
-                "api/instance/kill/", HttpMethod.POST,
-                MediaType.APPLICATION_JSON), SUSPEND("api/instance/suspend/",
-                HttpMethod.POST, MediaType.APPLICATION_JSON), RESUME(
-                "api/instance/resume/", HttpMethod.POST,
-                MediaType.APPLICATION_JSON), RERUN("api/instance/rerun/",
-                HttpMethod.POST, MediaType.APPLICATION_JSON), LOG("api/instance/logs/",
-                HttpMethod.GET, MediaType.APPLICATION_JSON);
+        RUNNING("api/instance/running/", HttpMethod.GET, MediaType.APPLICATION_JSON),
+        STATUS("api/instance/status/", HttpMethod.GET, MediaType.APPLICATION_JSON),
+        KILL("api/instance/kill/", HttpMethod.POST, MediaType.APPLICATION_JSON),
+        SUSPEND("api/instance/suspend/", HttpMethod.POST, MediaType.APPLICATION_JSON),
+        RESUME("api/instance/resume/", HttpMethod.POST, MediaType.APPLICATION_JSON),
+        RERUN("api/instance/rerun/", HttpMethod.POST, MediaType.APPLICATION_JSON),
+        LOG("api/instance/logs/", HttpMethod.GET, MediaType.APPLICATION_JSON),
+        SUMMARY("api/instance/summary/", HttpMethod.GET, MediaType.APPLICATION_JSON);
         private String path;
         private String method;
         private String mimeType;
@@ -282,6 +280,14 @@ public class FalconClient {
         throws FalconCLIException {
 
         return sendInstanceRequest(Instances.STATUS, type, entity, start, end,
+                null, null, colo);
+    }
+
+    public String getSummaryOfInstances(String type, String entity,
+                                       String start, String end,
+                                       String colo) throws FalconCLIException {
+
+        return sendInstanceRequest(Instances.SUMMARY, type, entity, start, end,
                 null, null, colo);
     }
 
@@ -545,6 +551,8 @@ public class FalconClient {
 
         if (instances.name().equals("LOG")) {
             return parseProcessInstanceResultLogs(clientResponse, runid);
+        } else if (instances.name().equals("SUMMARY")) {
+            return summarizeProcessInstanceResult(clientResponse);
         } else {
             return parseProcessInstanceResult(clientResponse);
         }
@@ -583,6 +591,35 @@ public class FalconClient {
         throws FalconCLIException {
 
         return clientResponse.getEntity(String.class);
+    }
+
+    private String summarizeProcessInstanceResult(ClientResponse clientResponse) {
+        InstancesSummaryResult result = clientResponse
+                .getEntity(InstancesSummaryResult.class);
+        StringBuilder sb = new StringBuilder();
+        String toAppend;
+
+        sb.append("Consolidated Status: ").append(result.getStatus()).append("\n");
+        sb.append("\nInstances Summary:\n");
+
+        if (result.getInstancesSummary() != null) {
+            for (InstancesSummaryResult.InstanceSummary summary : result.getInstancesSummary()) {
+                toAppend = summary.getCluster() != null ? summary.getCluster() : "-";
+                sb.append("Cluster: ").append(toAppend).append("\n");
+
+                sb.append("Status\t\tCount\n");
+                sb.append("-------------------------\n");
+
+                for (Map.Entry<String, Long> entry : summary.getSummaryMap().entrySet()) {
+                    sb.append(entry.getKey()).append("\t\t").append(entry.getValue()).append("\n");
+                }
+            }
+        }
+
+        sb.append("\nAdditional Information:\n");
+        sb.append("Response: ").append(result.getMessage());
+        sb.append("Request Id: ").append(result.getRequestId());
+        return sb.toString();
     }
 
     private String parseProcessInstanceResult(ClientResponse clientResponse) {

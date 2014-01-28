@@ -66,6 +66,7 @@ public class FalconCLI {
     public static final String SUBMIT_AND_SCHEDULE_OPT = "submitAndSchedule";
     public static final String VALIDATE_OPT = "validate";
     public static final String STATUS_OPT = "status";
+    public static final String SUMMARY_OPT = "summary";
     public static final String DEFINITION_OPT = "definition";
     public static final String DEPENDENCY_OPT = "dependency";
     public static final String LIST_OPT = "list";
@@ -190,6 +191,8 @@ public class FalconCLI {
         } else if (optionsList.contains(STATUS_OPT)) {
             result = client.getStatusOfInstances(type, entity, start, end,
                     runid, colo);
+        } else if (optionsList.contains(SUMMARY_OPT)) {
+            result = client.getSummaryOfInstances(type, entity, start, end, colo);
         } else if (optionsList.contains(KILL_OPT)) {
             result = client.killInstances(type, entity, start, end, colo, clusters, sourceClusters);
         } else if (optionsList.contains(SUSPEND_OPT)) {
@@ -234,7 +237,8 @@ public class FalconCLI {
         if (optionsList.contains(CLUSTERS_OPT)) {
             if (optionsList.contains(RUNNING_OPT)
                     || optionsList.contains(LOG_OPT)
-                    || optionsList.contains(STATUS_OPT)) {
+                    || optionsList.contains(STATUS_OPT)
+                    || optionsList.contains(SUMMARY_OPT)) {
                 throw new FalconCLIException("Invalid argument: clusters");
             }
         }
@@ -242,7 +246,8 @@ public class FalconCLI {
         if (optionsList.contains(SOURCECLUSTER_OPT)) {
             if (optionsList.contains(RUNNING_OPT)
                     || optionsList.contains(LOG_OPT)
-                    || optionsList.contains(STATUS_OPT) || !type.equals("feed")) {
+                    || optionsList.contains(STATUS_OPT)
+                    || optionsList.contains(SUMMARY_OPT) || !type.equals("feed")) {
                 throw new FalconCLIException("Invalid argument: sourceClusters");
             }
         }
@@ -458,6 +463,10 @@ public class FalconCLI {
                 STATUS_OPT,
                 false,
                 "Gets status of process instances for a given process in the range start time and optional end time");
+        Option summary = new Option(
+                SUMMARY_OPT,
+                false,
+                "Gets summary of instances for a given process in the range start time and optional end time");
         Option kill = new Option(
                 KILL_OPT,
                 false,
@@ -492,6 +501,7 @@ public class FalconCLI {
         OptionGroup group = new OptionGroup();
         group.addOption(running);
         group.addOption(status);
+        group.addOption(summary);
         group.addOption(kill);
         group.addOption(resume);
         group.addOption(suspend);
