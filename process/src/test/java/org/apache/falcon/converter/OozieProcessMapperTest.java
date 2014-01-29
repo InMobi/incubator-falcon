@@ -271,6 +271,12 @@ public class OozieProcessMapperTest extends AbstractTestBase {
         Assert.assertEquals("user-workflow", ((DECISION) decisionOrForkOrJoin.get(2)).getName());
         Assert.assertEquals("succeeded-post-processing", ((ACTION) decisionOrForkOrJoin.get(5)).getName());
         Assert.assertEquals("failed-post-processing", ((ACTION) decisionOrForkOrJoin.get(6)).getName());
+        Assert.assertEquals("3", ((ACTION) decisionOrForkOrJoin.get(1)).getRetryMax());
+        Assert.assertEquals("1", ((ACTION) decisionOrForkOrJoin.get(1)).getRetryInterval());
+        Assert.assertEquals("3", ((ACTION) decisionOrForkOrJoin.get(5)).getRetryMax());
+        Assert.assertEquals("1", ((ACTION) decisionOrForkOrJoin.get(5)).getRetryInterval());
+        Assert.assertEquals("3", ((ACTION) decisionOrForkOrJoin.get(6)).getRetryMax());
+        Assert.assertEquals("1", ((ACTION) decisionOrForkOrJoin.get(6)).getRetryInterval());
     }
 
     private COORDINATORAPP getCoordinator(Path path) throws Exception {
