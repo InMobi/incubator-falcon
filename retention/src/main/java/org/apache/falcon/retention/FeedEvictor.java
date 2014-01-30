@@ -126,6 +126,9 @@ public class FeedEvictor extends Configured implements Tool {
         feedPath = normalizedPath.toUri().getPath();
         LOG.info("Normalized path : " + feedPath);
         Pair<Date, Date> range = getDateRange(retentionLimit);
+        LOG.info("Applying retention on " + feedPattern + " type: " + retentionType
+            + ", Limit: " + retentionLimit + ", timezone: " + timeZone
+            + ", frequency: " + frequency);
         String dateMask = getDateFormatInPath(feedPath);
         List<Path> toBeDeleted = discoverInstanceToDelete(feedPath, timeZone, dateMask, range.first);
         if (toBeDeleted.isEmpty()) {
