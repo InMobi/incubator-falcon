@@ -134,7 +134,7 @@ public class EntityManagerJerseyIT {
         WebResource resource = context.service.path("api/entities/update/"
                 + entity.getEntityType().name().toLowerCase() + "/" + entity.getName());
         if (endTime != null) {
-            resource = resource.queryParam("end", SchemaHelper.formatDateUTC(endTime));
+            resource = resource.queryParam("effective", SchemaHelper.formatDateUTC(endTime));
         }
         ClientResponse response =
                 resource.header("Remote-User", TestContext.REMOTE_USER).accept(MediaType.TEXT_XML)
@@ -694,8 +694,10 @@ public class EntityManagerJerseyIT {
     }
 
     public Date getEndTime() {
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.HOUR, 1);
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        cal.add(Calendar.DAY_OF_MONTH, 1);
+        cal.set(Calendar.HOUR, 0);
+        cal.set(Calendar.MINUTE, 0);
         cal.set(Calendar.SECOND, 0);
         cal.set(Calendar.MILLISECOND, 0);
         return cal.getTime();
