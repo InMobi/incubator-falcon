@@ -72,7 +72,7 @@ public class FeedEvictor extends Configured implements Tool {
     private static final ExpressionHelper RESOLVER = ExpressionHelper.get();
 
     public static final AtomicReference<PrintStream> OUT = new AtomicReference<PrintStream>(System.out);
-//    static PrintStream stream = System.out;
+    //    static PrintStream stream = System.out;
 
     private static final String FORMAT = "yyyyMMddHHmm";
 
@@ -97,14 +97,14 @@ public class FeedEvictor extends Configured implements Tool {
     public int run(String[] args) throws Exception {
 
         CommandLine cmd = getCommand(args);
-        String feedBasePath = cmd.getOptionValue("feedBasePath").replaceAll("\\?\\{", "\\$\\{");
+        String feedPattern = cmd.getOptionValue("feedBasePath").replaceAll("\\?\\{", "\\$\\{");
         String retentionType = cmd.getOptionValue("retentionType");
         String retentionLimit = cmd.getOptionValue("retentionLimit");
         String timeZone = cmd.getOptionValue("timeZone");
         String frequency = cmd.getOptionValue("frequency"); //to write out smart path filters
         String logFile = cmd.getOptionValue("logFile");
 
-        String[] feedLocs = feedBasePath.split("#");
+        String[] feedLocs = feedPattern.split("#");
         for (String path : feedLocs) {
             evictor(path, retentionType, retentionLimit, timeZone, frequency);
         }
@@ -119,30 +119,31 @@ public class FeedEvictor extends Configured implements Tool {
         return 0;
     }
 
-    private void evictor(String feedBasePath, String retentionType,
-                         String retentionLimit, String timeZone, String frequency) throws IOException, ELException {
-        Path normalizedPath = new Path(feedBasePath);
+    private void evictor(String feedPath, String retentionType,
+        String retentionLimit, String timeZone, String frequency) throws IOException, ELException {
+        Path normalizedPath = new Path(feedPath);
         fs = normalizedPath.getFileSystem(getConf());
-        feedBasePath = normalizedPath.toUri().getPath();
-        LOG.info("Normalized path : " + feedBasePath);
+        feedPath = normalizedPath.toUri().getPath();
+        LOG.info("Normalized path : " + feedPath);
         Pair<Date, Date> range = getDateRange(retentionLimit);
-        String dateMask = getDateFormatInPath(feedBasePath);
-        List<Path> toBeDeleted = discoverInstanceToDelete(feedBasePath,
-                timeZone, dateMask, range.first);
-
-        LOG.info("Applying retention on " + feedBasePath + " type: "
-                + retentionType + ", Limit: " + retentionLimit + ", timezone: "
-                + timeZone + ", frequency: " + frequency);
+        LOG.info("Applying retention on " + feedPath + " type: " + retentionType
+            + ", Limit: " + retentionLimit + ", timezone: " + timeZone
+            + ", frequency: " + frequency);
+        String dateMask = getDateFormatInPath(feedPath);
+        List<Path> toBeDeleted = discoverInstanceToDelete(feedPath, timeZone, dateMask, range.first);
+        if (toBeDeleted.isEmpty()) {
+            LOG.info("No instances to delete.");
+            return;
+        }
 
         DateFormat dateFormat = new SimpleDateFormat(FORMAT);
         dateFormat.setTimeZone(TimeZone.getTimeZone(timeZone));
+        Path feedBasePath = getFeedBasePath(feedPath);
         for (Path path : toBeDeleted) {
-            if (deleteInstance(path)) {
-                LOG.info("Deleted instance " + path);
-                Date date = getDate(path, feedBasePath, dateMask, timeZone);
-                buffer.append(dateFormat.format(date)).append(',');
-                instancePaths.append(path).append(",");
-            }
+            deleteInstance(path, feedBasePath);
+            Date date = getDate(path, feedPath, dateMask, timeZone);
+            buffer.append(dateFormat.format(date)).append(',');
+            instancePaths.append(path).append(",");
         }
     }
 
@@ -159,14 +160,14 @@ public class FeedEvictor extends Configured implements Tool {
 
     private Pair<Date, Date> getDateRange(String period) throws ELException {
         Long duration = (Long) EVALUATOR.evaluate("${" + period + "}",
-                Long.class, RESOLVER, RESOLVER);
+            Long.class, RESOLVER, RESOLVER);
         Date end = new Date();
         Date start = new Date(end.getTime() - duration);
         return Pair.of(start, end);
     }
 
     private List<Path> discoverInstanceToDelete(String inPath, String timeZone,
-                                                String dateMask, Date start) throws IOException {
+        String dateMask, Date start) throws IOException {
 
         FileStatus[] files = findFilesForFeed(inPath);
         if (files == null || files.length == 0) {
@@ -176,7 +177,7 @@ public class FeedEvictor extends Configured implements Tool {
         List<Path> toBeDeleted = new ArrayList<Path>();
         for (FileStatus file : files) {
             Date date = getDate(new Path(file.getPath().toUri().getPath()),
-                    inPath, dateMask, timeZone);
+                inPath, dateMask, timeZone);
             LOG.debug("Considering " + file.getPath().toUri().getPath());
             LOG.debug("Date : " + date);
             if (date != null && !isDateInRange(date, start)) {
@@ -190,10 +191,10 @@ public class FeedEvictor extends Configured implements Tool {
         String mask = extractDatePartFromPathMask(inPath, inPath);
         //yyyyMMddHHmm
         return mask.replaceAll(VARS.YEAR.regex(), "yyyy")
-                .replaceAll(VARS.MONTH.regex(), "MM")
-                .replaceAll(VARS.DAY.regex(), "dd")
-                .replaceAll(VARS.HOUR.regex(), "HH")
-                .replaceAll(VARS.MINUTE.regex(), "mm");
+            .replaceAll(VARS.MONTH.regex(), "MM")
+            .replaceAll(VARS.DAY.regex(), "dd")
+            .replaceAll(VARS.HOUR.regex(), "HH")
+            .replaceAll(VARS.MINUTE.regex(), "mm");
     }
 
     private FileStatus[] findFilesForFeed(String feedBasePath) throws IOException {
@@ -220,7 +221,7 @@ public class FeedEvictor extends Configured implements Tool {
 
     //consider just the first occurrence of the pattern
     private Date getDate(Path file, String inMask,
-                         String dateMask, String timeZone) {
+        String dateMask, String timeZone) {
         String path = extractDatePartFromPathMask(inMask, file.toString());
         populateDatePartMap(path, dateMask);
 
@@ -243,7 +244,7 @@ public class FeedEvictor extends Configured implements Tool {
 
         try {
             DateFormat dateFormat = new SimpleDateFormat(FORMAT.
-                    substring(0, date.length()));
+                substring(0, date.length()));
             dateFormat.setTimeZone(TimeZone.getTimeZone(timeZone));
             return dateFormat.parse(date);
         } catch (ParseException e) {
@@ -272,8 +273,13 @@ public class FeedEvictor extends Configured implements Tool {
         return date.compareTo(start) >= 0;
     }
 
-    private boolean deleteInstance(Path path) throws IOException {
-        return fs.delete(path, true);
+    private void deleteInstance(Path path, Path feedBasePath) throws IOException {
+        if (fs.delete(path, true)) {
+            LOG.info("Deleted instance :" + path);
+        } else {
+            throw new IOException("Unable to delete instance: " + path);
+        }
+        deleteParentIfEmpty(path.getParent(), feedBasePath);
     }
 
     private void debug(FileSystem myfs, Path outPath) throws IOException {
@@ -288,27 +294,53 @@ public class FeedEvictor extends Configured implements Tool {
         Options options = new Options();
         Option opt;
         opt = new Option("feedBasePath", true,
-                "base path for feed, ex /data/feed/${YEAR}-${MONTH}");
+            "base path for feed, ex /data/feed/${YEAR}-${MONTH}");
         opt.setRequired(true);
         options.addOption(opt);
         opt = new Option("retentionType", true,
-                "type of retention policy like delete, archive etc");
+            "type of retention policy like delete, archive etc");
         opt.setRequired(true);
         options.addOption(opt);
         opt = new Option("retentionLimit", true,
-                "time limit for retention, ex hours(5), months(2), days(90)");
+            "time limit for retention, ex hours(5), months(2), days(90)");
         opt.setRequired(true);
         options.addOption(opt);
         opt = new Option("timeZone", true, "timezone for feed, ex UTC");
         opt.setRequired(true);
         options.addOption(opt);
         opt = new Option("frequency", true,
-                "frequency of feed,  ex hourly, daily, monthly, minute, weekly, yearly");
+            "frequency of feed,  ex hourly, daily, monthly, minute, weekly, yearly");
         opt.setRequired(true);
         options.addOption(opt);
         opt = new Option("logFile", true, "log file for capturing size of feed");
         opt.setRequired(true);
         options.addOption(opt);
         return new GnuParser().parse(options, args);
+    }
+
+    private Path getFeedBasePath(String feedPath) throws IOException {
+        Matcher matcher = FeedDataPath.PATTERN.matcher(feedPath);
+        if (matcher.find()) {
+            return new Path(feedPath.substring(0, matcher.start()));
+        } else {
+            throw new IOException("Unable to resolve pattern for feedPath: " + feedPath);
+        }
+
+    }
+
+    private void deleteParentIfEmpty(Path parent, Path feedBasePath) throws IOException {
+        if (feedBasePath.equals(parent)) {
+            LOG.info("Not deleting feed base path:" + parent);
+        } else {
+            if (fs.getContentSummary(parent).getFileCount() == 0) {
+                LOG.info("Parent path: " + parent + " is empty, deleting path");
+                if (fs.delete(parent, true)) {
+                    LOG.info("Deleted empty dir: " + parent);
+                } else {
+                    throw new IOException("Unable to delete parent path:" + parent);
+                }
+                deleteParentIfEmpty(parent.getParent(), feedBasePath);
+            }
+        }
     }
 }

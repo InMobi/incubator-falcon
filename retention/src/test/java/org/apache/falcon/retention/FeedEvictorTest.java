@@ -102,6 +102,7 @@ public class FeedEvictorTest {
 
             Pair<List<String>, List<String>> pair;
             pair = createTestData("feed1", "yyyy-MM-dd/'more'/yyyy", 10, TimeUnit.DAYS, "/data");
+            final String storageUrl = cluster.getConf().get("fs.default.name");
             String dataPath = "/data/YYYY/feed1/mmHH/dd/MM/?{YEAR}-?{MONTH}-?{DAY}/more/?{YEAR}";
             String logFile = hdfsUrl + "/falcon/staging/feed/instancePaths-2012-01-01-01-00.csv";
 
@@ -114,6 +115,14 @@ public class FeedEvictorTest {
             compare(map.get("feed1"), stream.getBuffer());
 
             Assert.assertEquals(readLogFile(new Path(logFile)), getExpectedInstancePaths(dataPath));
+            String deletedPath = getExpectedInstancePaths(dataPath.replaceAll(storageUrl, "")).split(",")
+                [0].split("=")[1];
+            Assert.assertFalse(fs.exists(new Path(deletedPath)));
+            //empty parents
+            Assert.assertFalse(fs.exists(new Path(deletedPath).getParent()));
+            Assert.assertFalse(fs.exists(new Path(deletedPath).getParent().getParent()));
+            //base path not deleted
+            Assert.assertTrue(fs.exists(new Path("/data/YYYY/feed1/mmHH/dd/MM/")));
 
         } catch (Exception e) {
             Assert.fail("Unknown exception", e);
