@@ -784,6 +784,10 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
             List<CoordinatorAction> actions = new ArrayList<CoordinatorAction>();
 
             for (CoordinatorJob coord : applicableCoords) {
+                if (coord.getNextMaterializedTime() == null) {
+                    continue;
+                }
+
                 Frequency freq = createFrequency(coord.getFrequency(), coord.getTimeUnit());
                 TimeZone tz = EntityUtil.getTimeZone(coord.getTimeZone());
                 Date iterStart = EntityUtil.getNextStartTime(coord.getStartTime(), freq, tz, start);
