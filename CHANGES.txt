@@ -36,6 +36,9 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-323 Summary API deserialization fails if array has only one element.
+    (Shwetha GS)
+
     FALCON-319 Summary instance API returning wrong exception. (Shwetha GS)
 
     FALCON-297 Validations on update with effective time. (Shwetha GS)
