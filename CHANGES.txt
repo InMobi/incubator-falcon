@@ -36,6 +36,8 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-331 Summary API returning NPE if only start is passed. (Shwetha GS)
+
     FALCON-323 Summary API deserialization fails if array has only one element.
     (Shwetha GS)
 
