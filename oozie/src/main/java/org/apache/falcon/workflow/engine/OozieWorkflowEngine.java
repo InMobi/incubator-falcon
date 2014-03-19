@@ -21,11 +21,13 @@ package org.apache.falcon.workflow.engine;
 import org.apache.commons.lang.StringUtils;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.Tag;
-import org.apache.falcon.entity.ClusterHelper;
 import org.apache.falcon.entity.EntityUtil;
-import org.apache.falcon.entity.store.ConfigurationStore;
-import org.apache.falcon.entity.v0.*;
+import org.apache.falcon.entity.v0.Entity;
+import org.apache.falcon.entity.v0.EntityGraph;
+import org.apache.falcon.entity.v0.EntityType;
+import org.apache.falcon.entity.v0.Frequency;
 import org.apache.falcon.entity.v0.Frequency.TimeUnit;
+import org.apache.falcon.entity.v0.SchemaHelper;
 import org.apache.falcon.entity.v0.cluster.Cluster;
 import org.apache.falcon.resource.APIResult;
 import org.apache.falcon.resource.InstancesResult;
@@ -37,17 +39,31 @@ import org.apache.falcon.update.UpdateHelper;
 import org.apache.falcon.util.OozieUtils;
 import org.apache.falcon.workflow.OozieWorkflowBuilder;
 import org.apache.falcon.workflow.WorkflowBuilder;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
 import org.apache.log4j.Logger;
-import org.apache.oozie.client.*;
+import org.apache.oozie.client.BundleJob;
+import org.apache.oozie.client.CoordinatorAction;
+import org.apache.oozie.client.CoordinatorJob;
 import org.apache.oozie.client.CoordinatorJob.Timeunit;
+import org.apache.oozie.client.Job;
 import org.apache.oozie.client.Job.Status;
+import org.apache.oozie.client.OozieClient;
+import org.apache.oozie.client.OozieClientException;
+import org.apache.oozie.client.WorkflowJob;
 import org.apache.oozie.client.rest.RestConstants;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TimeZone;
 
 /**
  * Workflow engine which uses oozies APIs.
@@ -109,7 +125,10 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         for (Map.Entry<String, BundleJob> entry : bundleMap.entrySet()) {
             String cluster = entry.getKey();
             BundleJob bundleJob = entry.getValue();
-            if (bundleJob == MISSING) {
+            if (bundleJob == MISSING || bundleJob.getStatus().equals(Job.Status.KILLED)) {
+                if (bundleJob != MISSING) {
+                    LOG.warn("Bundle id: " + bundleJob.getId() + " is in killed state, so allowing schedule");
+                }
                 schedClusters.add(cluster);
             } else {
                 LOG.debug("The entity " + entity.getName() + " is already scheduled on cluster " + cluster);
@@ -117,25 +136,16 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         }
 
         if (!schedClusters.isEmpty()) {
-            WorkflowBuilder<Entity> builder = WorkflowBuilder.getBuilder(ENGINE, entity);
-            Map<String, Properties> newFlows = builder.newWorkflowSchedule(entity, schedClusters);
+            WorkflowBuilder<Entity> builder = WorkflowBuilder.getBuilder(
+                    ENGINE, entity);
+            Map<String, Properties> newFlows = builder.newWorkflowSchedule(
+                    entity, schedClusters);
             for (Map.Entry<String, Properties> entry : newFlows.entrySet()) {
                 String cluster = entry.getKey();
-                LOG.info("Scheduling " + entity.toShortString() + " on cluster " + cluster);
+                LOG.info("Scheduling " + entity.toShortString()
+                        + " on cluster " + cluster);
                 scheduleEntity(cluster, entry.getValue(), entity);
-                commitStagingPath(cluster, entry.getValue().getProperty(OozieClient.BUNDLE_APP_PATH));
             }
-        }
-    }
-
-    private void commitStagingPath(String cluster, String path) throws FalconException {
-        path = StringUtils.removeStart(path, "${nameNode}");
-        FileSystem fs =
-                ClusterHelper.getFileSystem((Cluster) ConfigurationStore.get().get(EntityType.CLUSTER, cluster));
-        try {
-            fs.create(new Path(path, EntityUtil.SUCCEEDED_FILE_NAME)).close();
-        } catch (IOException e) {
-            throw new FalconException(e);
         }
     }
 
@@ -186,16 +196,31 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         return true;
     }
 
-    //Return all bundles for the entity in the requested cluster
-    private List<BundleJob> findBundles(Entity entity, String cluster) throws FalconException {
+    private BundleJob findBundle(Entity entity, String cluster)
+        throws FalconException {
+
+        String stPath = EntityUtil.getStagingPath(entity);
+        LOG.info("Staging path for entity " + stPath);
+        List<BundleJob> bundles = findBundles(entity, cluster);
+        for (BundleJob job : bundles) {
+            if (job.getAppPath().endsWith(stPath)) {
+                return getBundleInfo(cluster, job.getId());
+            }
+        }
+        return MISSING;
+    }
+
+    private List<BundleJob> findBundles(Entity entity, String cluster)
+        throws FalconException {
+
         try {
             OozieClient client = OozieClientFactory.get(cluster);
             List<BundleJob> jobs = client.getBundleJobsInfo(
-                    OozieClient.FILTER_NAME + "=" + EntityUtil.getWorkflowName(entity) + ";", 0, 256);
+                    OozieClient.FILTER_NAME + "="
+                            + EntityUtil.getWorkflowName(entity) + ";", 0, 256);
             if (jobs != null) {
                 List<BundleJob> filteredJobs = new ArrayList<BundleJob>();
                 for (BundleJob job : jobs) {
-                    //Filtering bundles that correspond to deleted entities(endtime is set when an entity is deleted)
                     if (job.getEndTime() == null) {
                         filteredJobs.add(job);
                         LOG.debug("Found bundle " + job.getId());
@@ -209,8 +234,9 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         }
     }
 
-    //Return all bundles for the entity for each cluster
-    private Map<String, List<BundleJob>> findBundles(Entity entity) throws FalconException {
+    private Map<String, List<BundleJob>> findBundles(Entity entity)
+        throws FalconException {
+
         Set<String> clusters = EntityUtil.getClustersDefinedInColos(entity);
         Map<String, List<BundleJob>> jobMap = new HashMap<String, List<BundleJob>>();
         for (String cluster : clusters) {
@@ -219,17 +245,29 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         return jobMap;
     }
 
-    //Return latest bundle(last created) for the entity for each cluster
-    private Map<String, BundleJob> findLatestBundle(Entity entity) throws FalconException {
-        Set<String> clusters = EntityUtil.getClustersDefinedInColos(entity);
-        Map<String, BundleJob> jobMap = new HashMap<String, BundleJob>();
-        for (String cluster : clusters) {
-            jobMap.put(cluster, findLatestBundle(entity, cluster));
+    // During update, a new bundle may not be created if next start time >= end
+    // time
+    // In this case, there will not be a bundle with the latest entity md5
+    // So, pick last created bundle
+    private Map<String, BundleJob> findLatestBundle(Entity entity)
+        throws FalconException {
+
+        Map<String, List<BundleJob>> bundlesMap = findBundles(entity);
+        Map<String, BundleJob> bundleMap = new HashMap<String, BundleJob>();
+        for (Map.Entry<String, List<BundleJob>> entry : bundlesMap.entrySet()) {
+            String cluster = entry.getKey();
+            Date latest = null;
+            bundleMap.put(cluster, MISSING);
+            for (BundleJob job : entry.getValue()) {
+                if (latest == null || latest.before(job.getCreatedTime())) {
+                    bundleMap.put(cluster, job);
+                    latest = job.getCreatedTime();
+                }
+            }
         }
-        return jobMap;
+        return bundleMap;
     }
 
-    //Return latest bundle(last created) for the entity in the requested cluster
     private BundleJob findLatestBundle(Entity entity, String cluster) throws FalconException {
         List<BundleJob> bundles = findBundles(entity, cluster);
         Date latest = null;
@@ -568,8 +606,8 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                 Frequency freq = createFrequency(coord.getFrequency(), coord.getTimeUnit());
                 TimeZone tz = EntityUtil.getTimeZone(coord.getTimeZone());
                 Date iterStart = EntityUtil.getNextStartTime(coord.getStartTime(), freq, tz, start);
-                Date iterEnd = (coord.getLastActionTime() != null && coord.getLastActionTime().before(end) ?
-                        coord.getLastActionTime() : end);
+                Date iterEnd = (coord.getLastActionTime() != null && coord.getLastActionTime().before(end)
+                    ? coord.getLastActionTime() : end);
 
                 if (i == (applicableCoords.size() - 1)) {
                     isLastCoord = true;
@@ -884,25 +922,20 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         });
     }
 
-    private boolean canUpdateBundle(Entity oldEntity, Entity newEntity, boolean wfUpdated) throws FalconException {
-        return !wfUpdated && EntityUtil.equals(oldEntity, newEntity, BUNDLE_UPDATEABLE_PROPS);
+    private boolean canUpdateBundle(Entity oldEntity, Entity newEntity)
+        throws FalconException {
+        return EntityUtil.equals(oldEntity, newEntity, BUNDLE_UPDATEABLE_PROPS);
     }
 
     @Override
     public Date update(Entity oldEntity, Entity newEntity, String cluster, Date effectiveTime) throws FalconException {
-        boolean entityUpdated = UpdateHelper.isEntityUpdated(oldEntity, newEntity, cluster);
-        boolean wfUpdated = UpdateHelper.isWorkflowUpdated(cluster, newEntity);
-
-        if (!entityUpdated && !wfUpdated) {
+        if (!UpdateHelper.shouldUpdate(oldEntity, newEntity, cluster)) {
             LOG.debug("Nothing to update for cluster " + cluster);
             return null;
         }
 
-        Cluster clusterEntity = ConfigurationStore.get().get(EntityType.CLUSTER, cluster);
-        Path stagingPath = EntityUtil.getLastCommittedStagingPath(clusterEntity, oldEntity);
-        if (stagingPath != null) {  //update if entity is scheduled
-            BundleJob bundle = findBundleForStagingPath(cluster, oldEntity, stagingPath);
-            bundle = getBundleInfo(cluster, bundle.getId());
+        BundleJob bundle = findLatestBundle(oldEntity, cluster);
+        if (bundle != MISSING) {
             LOG.info("Updating entity through Workflow Engine" + newEntity.toShortString());
             Date newEndTime = EntityUtil.getEndTime(newEntity, cluster);
             if (newEndTime.before(now())) {
@@ -912,15 +945,15 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
 
             LOG.debug("Updating for cluster : " + cluster + ", bundle: " + bundle.getId());
 
-            if (canUpdateBundle(oldEntity, newEntity, wfUpdated)) {
+            if (canUpdateBundle(oldEntity, newEntity)) {
                 // only concurrency and endtime are changed. So, change coords
                 LOG.info("Change operation is adequate! : " + cluster + ", bundle: " + bundle.getId());
-                updateCoords(cluster, bundle, EntityUtil.getParallel(newEntity),
+                updateCoords(cluster, bundle.getId(), EntityUtil.getParallel(newEntity),
                         EntityUtil.getEndTime(newEntity, cluster));
                 return newEndTime;
             }
 
-            LOG.debug("Going to update ! : " + newEntity.toShortString() + "for cluster " + cluster + ", bundle: "
+            LOG.debug("Going to update ! : " + newEntity.toShortString() + cluster + ", bundle: "
                     + bundle.getId());
             effectiveTime = updateInternal(oldEntity, newEntity, cluster, bundle, false, effectiveTime);
             LOG.info("Entity update complete : " + newEntity.toShortString() + cluster + ", bundle: " + bundle.getId());
@@ -966,18 +999,6 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         return effectiveTime;
     }
 
-    //Returns bundle whose app path is same as the staging path(argument)
-    private BundleJob findBundleForStagingPath(String cluster, Entity entity, Path stagingPath) throws FalconException {
-        List<BundleJob> bundles = findBundles(entity, cluster);
-        String bundlePath = stagingPath.toUri().getPath();
-        for (BundleJob bundle : bundles) {
-            if (bundle.getAppPath().endsWith(bundlePath)) {
-                return bundle;
-            }
-        }
-        return null;
-    }
-
     private Date now() {
         Calendar cal = Calendar.getInstance();
         cal.set(Calendar.SECOND, 0);
@@ -1002,126 +1023,128 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         return null;
     }
 
-    private void updateCoords(String cluster, BundleJob bundle, int concurrency,
+    private void updateCoords(String cluster, String bundleId, int concurrency,
                               Date endTime) throws FalconException {
         if (endTime.compareTo(now()) <= 0) {
-            throw new FalconException("End time " + SchemaHelper.formatDateUTC(endTime) + " can't be in the past");
+            throw new FalconException("End time "
+                    + SchemaHelper.formatDateUTC(endTime)
+                    + " can't be in the past");
         }
 
+        BundleJob bundle = getBundleInfo(cluster, bundleId);
         // change coords
         for (CoordinatorJob coord : bundle.getCoordinators()) {
             LOG.debug("Updating endtime of coord " + coord.getId() + " to "
-                    + SchemaHelper.formatDateUTC(endTime) + " on cluster " + cluster);
+                    + SchemaHelper.formatDateUTC(endTime) + " on cluster "
+                    + cluster);
             Date lastActionTime = getCoordLastActionTime(coord);
             if (lastActionTime == null) { // nothing is materialized
-                LOG.info("Nothing is materialized for this coord: " + coord.getId());
+                LOG.info("Nothing is materialized for this coord: "
+                        + coord.getId());
                 if (endTime.compareTo(coord.getStartTime()) <= 0) {
-                    LOG.info("Setting end time to START TIME " + SchemaHelper.formatDateUTC(coord.getStartTime()));
-                    change(cluster, coord.getId(), concurrency, coord.getStartTime(), null);
+                    LOG.info("Setting end time to START TIME "
+                            + SchemaHelper.formatDateUTC(coord.getStartTime()));
+                    change(cluster, coord.getId(), concurrency,
+                            coord.getStartTime(), null);
                 } else {
-                    LOG.info("Setting end time to START TIME " + SchemaHelper.formatDateUTC(endTime));
+                    LOG.info("Setting end time to START TIME "
+                            + SchemaHelper.formatDateUTC(endTime));
                     change(cluster, coord.getId(), concurrency, endTime, null);
                 }
             } else {
-                LOG.info("Actions have materialized for this coord: " + coord.getId() + ", last action "
+                LOG.info("Actions have materialized for this coord: "
+                        + coord.getId() + ", last action "
                         + SchemaHelper.formatDateUTC(lastActionTime));
                 if (!endTime.after(lastActionTime)) {
                     Date pauseTime = offsetTime(endTime, -1);
                     // set pause time which deletes future actions
-                    LOG.info("Setting pause time on coord : " + coord.getId() + " to "
-                            + SchemaHelper.formatDateUTC(pauseTime));
-                    change(cluster, coord.getId(), concurrency, null, SchemaHelper.formatDateUTC(pauseTime));
+                    LOG.info("Setting pause time on coord : " + coord.getId()
+                            + " to " + SchemaHelper.formatDateUTC(pauseTime));
+                    change(cluster, coord.getId(), concurrency, null,
+                            SchemaHelper.formatDateUTC(pauseTime));
                 }
                 change(cluster, coord.getId(), concurrency, endTime, "");
             }
         }
     }
 
-    private void suspendCoords(String cluster, BundleJob bundle) throws FalconException {
+    private void suspend(String cluster, BundleJob bundle)
+        throws FalconException {
+
+        bundle = getBundleInfo(cluster, bundle.getId());
         for (CoordinatorJob coord : bundle.getCoordinators()) {
             suspend(cluster, coord.getId());
         }
     }
 
-    private void resumeCoords(String cluster, BundleJob bundle) throws FalconException {
+    private void resume(String cluster, BundleJob bundle) throws FalconException {
+        bundle = getBundleInfo(cluster, bundle.getId());
         for (CoordinatorJob coord : bundle.getCoordinators()) {
             resume(cluster, coord.getId());
         }
     }
 
-    private Date updateInternal(Entity oldEntity, Entity newEntity, String cluster, BundleJob oldBundle,
-                                boolean alreadyCreated, Date inEffectiveTime) throws FalconException {
-        OozieWorkflowBuilder<Entity> builder =
-                (OozieWorkflowBuilder<Entity>) WorkflowBuilder.getBuilder(ENGINE, oldEntity);
+    private Date updateInternal(Entity oldEntity, Entity newEntity,
+                                String cluster, BundleJob bundle, boolean alreadyCreated, Date inEffectiveTime)
+        throws FalconException {
 
-        Job.Status oldBundleStatus = oldBundle.getStatus();
-        //Suspend coords as bundle suspend doesn't suspend coords synchronously
-        suspendCoords(cluster, oldBundle);
+        OozieWorkflowBuilder<Entity> builder = (OozieWorkflowBuilder<Entity>) WorkflowBuilder
+                .getBuilder(ENGINE, oldEntity);
 
-        Cluster clusterEntity = ConfigurationStore.get().get(EntityType.CLUSTER, cluster);
-        Path stagingPath = EntityUtil.getLatestStagingPath(clusterEntity, oldEntity);
-        //find last scheduled bundle
-        BundleJob latestBundle = findBundleForStagingPath(cluster, oldEntity, stagingPath);
-        Date effectiveTime;
-        if (oldBundle.getAppPath().endsWith(stagingPath.toUri().getPath()) || latestBundle == null || !alreadyCreated) {
-            // new entity is not scheduled yet, create new bundle
+        // Change end time of coords and schedule new bundle
+        Job.Status oldBundleStatus = bundle.getStatus();
+        suspend(cluster, bundle);
+
+        BundleJob newBundle = findBundle(newEntity, cluster);
+        Date endTime;
+        if (newBundle == MISSING || !alreadyCreated) { // new entity is not
+            // scheduled yet
             LOG.info("New bundle hasn't been created yet. So will create one");
-
-            //pick effective time as now() + 3 min to handle any time diff between falcon and oozie
-            //oozie rejects changes with endtime < now
-            effectiveTime = offsetTime(now(), 3);
-            if (inEffectiveTime != null && inEffectiveTime.after(effectiveTime)) {
-                //If the user has specified effective time and is valid, pick user specified effective time
-                effectiveTime = inEffectiveTime;
+            endTime = offsetTime(now(), 3);
+            if (inEffectiveTime != null && inEffectiveTime.after(endTime)) {
+                endTime = inEffectiveTime;
             }
-
-            //pick start time for new bundle which is after effectiveTime
-            effectiveTime = builder.getNextStartTime(newEntity, cluster, effectiveTime);
-
-            //schedule new bundle
-            String newBundleId = scheduleForUpdate(newEntity, cluster, effectiveTime, oldBundle.getUser());
-            //newBundleId and latestBundle will be null if effectiveTime = process end time
-            if (newBundleId != null) {
-                latestBundle = getBundleInfo(cluster, newBundleId);
-                LOG.info("New bundle " + newBundleId + " scheduled successfully with start time "
-                    + SchemaHelper.formatDateUTC(effectiveTime));
-            }
+            Date newStartTime = builder.getNextStartTime(newEntity, cluster,
+                    endTime);
+            scheduleForUpdate(newEntity, cluster, newStartTime, bundle.getUser());
+            LOG.info("New bundle scheduled successfully "
+                    + SchemaHelper.formatDateUTC(newStartTime));
         } else {
-            LOG.info("New bundle has already been created. Bundle Id: " + latestBundle.getId() + ", Start: "
-                    + SchemaHelper.formatDateUTC(latestBundle.getStartTime()) + ", End: " + latestBundle.getEndTime());
-
-            //pick effectiveTime from already created bundle
-            effectiveTime = getMinStartTime(latestBundle);
-            LOG.info("Will set old coord end time to " + SchemaHelper.formatDateUTC(effectiveTime));
+            LOG.info("New bundle has already been created. Bundle Id: "
+                    + newBundle.getId() + ", Start: "
+                    + SchemaHelper.formatDateUTC(newBundle.getStartTime())
+                    + ", End: " + newBundle.getEndTime());
+            endTime = getMinStartTime(newBundle);
+            LOG.info("Will set old coord end time to "
+                    + SchemaHelper.formatDateUTC(endTime));
         }
-        if (effectiveTime != null) {
-            //set endtime for old coords
-            updateCoords(cluster, oldBundle, EntityUtil.getParallel(oldEntity), effectiveTime);
-        }
-
-        if (oldBundleStatus != Job.Status.SUSPENDED && oldBundleStatus != Job.Status.PREPSUSPENDED) {
-            //resume coords
-            resumeCoords(cluster, oldBundle);
+        if (endTime != null) {
+            updateCoords(cluster, bundle.getId(),
+                    EntityUtil.getParallel(oldEntity), endTime);
         }
 
-        //latestBundle will be null if effectiveTime = process end time
-        if (latestBundle != null) {
-            //create _SUCCESS in staging path to mark update is complete(to handle roll-forward for updates)
-            commitStagingPath(cluster, latestBundle.getAppPath());
+        if (oldBundleStatus != Job.Status.SUSPENDED
+                && oldBundleStatus != Job.Status.PREPSUSPENDED) {
+            resume(cluster, bundle);
         }
-        return effectiveTime;
+
+        return endTime;
     }
 
-    private String scheduleForUpdate(Entity entity, String cluster, Date startDate, String user)
+    private void scheduleForUpdate(Entity entity, String cluster, Date startDate, String user)
         throws FalconException {
-        WorkflowBuilder<Entity> builder = WorkflowBuilder.getBuilder(ENGINE, entity);
-        Properties bundleProps = builder.newWorkflowSchedule(entity, startDate, cluster, user);
-        LOG.info("Scheduling " + entity.toShortString() + " on cluster " + cluster + " with props " + bundleProps);
+
+        WorkflowBuilder<Entity> builder = WorkflowBuilder.getBuilder(ENGINE,
+                entity);
+        Properties bundleProps = builder.newWorkflowSchedule(entity, startDate,
+                cluster, user);
+        LOG.info("Scheduling " + entity.toShortString() + " on cluster "
+                + cluster + " with props " + bundleProps);
         if (bundleProps != null) {
-            return scheduleEntity(cluster, bundleProps, entity);
+            scheduleEntity(cluster, bundleProps, entity);
         } else {
-            LOG.info("No new workflow to be scheduled for this " + entity.toShortString());
-            return null;
+            LOG.info("No new workflow to be scheduled for this "
+                    + entity.toShortString());
         }
     }
 
@@ -1245,7 +1268,8 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         }
     }
 
-    private String scheduleEntity(String cluster, Properties props, Entity entity) throws FalconException {
+    private String scheduleEntity(String cluster, Properties props,
+                                  Entity entity) throws FalconException {
         for (WorkflowEngineActionListener listener : listeners) {
             listener.beforeSchedule(entity, cluster);
         }

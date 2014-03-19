@@ -52,7 +52,8 @@ public class OozieHouseKeepingService implements WorkflowEngineActionListener {
     public void afterDelete(Entity entity, String clusterName) throws FalconException {
         try {
             Cluster cluster = EntityUtil.getEntity(EntityType.CLUSTER, clusterName);
-            Path entityPath = EntityUtil.getBaseStagingPath(cluster, entity);
+            Path entityPath = new Path(ClusterHelper.getLocation(cluster, "staging"),
+                    EntityUtil.getStagingPath(entity)).getParent();
             LOG.info("Deleting entity path " + entityPath + " on cluster " + clusterName);
 
             Configuration conf = ClusterHelper.getConfiguration(cluster);

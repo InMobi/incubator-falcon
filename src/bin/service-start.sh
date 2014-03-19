@@ -95,4 +95,4 @@ nohup ${JAVA_BIN} ${JAVA_PROPERTIES} -cp ${FALCONCPPATH} org.apache.falcon.Main 
 echo $! > ${BASEDIR}/logs/$APP_TYPE.pid
 popd > /dev/null
 
-echo "$APP_TYPE started using hadoop version: " `${JAVA_BIN} -cp ${FALCONCPPATH} org.apache.hadoop.util.VersionInfo 2> /dev/null | head -1`
+echo "Falcon started using hadoop version: " `${JAVA_BIN} ${JAVA_PROPERTIES} -cp ${FALCONCPPATH} org.apache.hadoop.util.VersionInfo | head -1`

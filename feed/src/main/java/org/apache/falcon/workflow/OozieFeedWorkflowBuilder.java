@@ -22,6 +22,7 @@ import org.apache.falcon.FalconException;
 import org.apache.falcon.Tag;
 import org.apache.falcon.converter.AbstractOozieEntityMapper;
 import org.apache.falcon.converter.OozieFeedMapper;
+import org.apache.falcon.entity.ClusterHelper;
 import org.apache.falcon.entity.EntityUtil;
 import org.apache.falcon.entity.FeedHelper;
 import org.apache.falcon.entity.v0.EntityType;
@@ -63,7 +64,7 @@ public class OozieFeedWorkflowBuilder extends OozieWorkflowBuilder<Feed> {
         }
 
         Cluster cluster = CONFIG_STORE.get(EntityType.CLUSTER, feedCluster.getName());
-        Path bundlePath = EntityUtil.getNewStagingPath(cluster, feed);
+        Path bundlePath = new Path(ClusterHelper.getLocation(cluster, "staging"), EntityUtil.getStagingPath(feed));
         Feed feedClone = (Feed) feed.copy();
         EntityUtil.setStartDate(feedClone, clusterName, startDate);
 

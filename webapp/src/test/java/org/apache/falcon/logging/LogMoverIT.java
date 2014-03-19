@@ -139,7 +139,9 @@ public class LogMoverIT {
     }
 
     private Path getLogPath() throws FalconException {
-        Path stagingPath = EntityUtil.getLogPath(testCluster.getCluster(), testProcess);
+        Path stagingPath = new Path(ClusterHelper.getLocation(
+                testCluster.getCluster(), "staging"),
+                EntityUtil.getStagingPath(testProcess) + "/../logs");
         return new Path(ClusterHelper.getStorageUrl(testCluster
                 .getCluster()), stagingPath);
     }

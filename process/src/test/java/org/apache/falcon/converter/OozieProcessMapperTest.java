@@ -18,6 +18,23 @@
 
 package org.apache.falcon.converter;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertTrue;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.util.Collections;
+import java.util.List;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBElement;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.Schema;
+import javax.xml.validation.SchemaFactory;
+
 import org.apache.falcon.Tag;
 import org.apache.falcon.cluster.util.EmbeddedCluster;
 import org.apache.falcon.entity.ClusterHelper;
@@ -49,23 +66,6 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBElement;
-import javax.xml.bind.Unmarshaller;
-import javax.xml.transform.stream.StreamSource;
-import javax.xml.validation.Schema;
-import javax.xml.validation.SchemaFactory;
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.Collections;
-import java.util.List;
-
-import static org.testng.Assert.assertEquals;
-import static org.testng.Assert.assertTrue;
 
 /**
  * Test for the Falcon entities mapping into Oozie artifacts.
@@ -184,18 +184,11 @@ public class OozieProcessMapperTest extends AbstractTestBase {
         testParentWorkflow(process, parentWorkflow);
     }
 
-    private void prepare(Process process) throws IOException {
-        Path wf = new Path(process.getWorkflow().getPath());
-        fs.mkdirs(wf.getParent());
-        fs.create(wf).close();
-    }
-
     @Test
     public void testPigProcessMapper() throws Exception {
         Process process = ConfigurationStore.get().get(EntityType.PROCESS, "pig-process");
         Assert.assertEquals("pig", process.getWorkflow().getEngine().value());
 
-        prepare(process);
         WORKFLOWAPP parentWorkflow = initializeProcessMapper(process, "12", "360");
         testParentWorkflow(process, parentWorkflow);
 
@@ -203,8 +196,7 @@ public class OozieProcessMapperTest extends AbstractTestBase {
 
         ACTION pigAction = (ACTION) decisionOrForkOrJoin.get(3);
         Assert.assertEquals("user-pig-job", pigAction.getName());
-        Assert.assertEquals(pigAction.getPig().getScript(),
-                "${nameNode}/falcon/staging/workflows/pig-process/user/id.pig");
+        Assert.assertEquals("${nameNode}/apps/pig/id.pig", pigAction.getPig().getScript());
         Assert.assertEquals(Collections.EMPTY_LIST, pigAction.getPig().getArchive());
 
         ACTION oozieAction = (ACTION) decisionOrForkOrJoin.get(4);
@@ -242,7 +234,7 @@ public class OozieProcessMapperTest extends AbstractTestBase {
         throws Exception {
         Cluster cluster = ConfigurationStore.get().get(EntityType.CLUSTER, "corp");
         OozieProcessMapper mapper = new OozieProcessMapper(process);
-        Path bundlePath = new Path("/falcon/staging/workflows", process.getName());
+        Path bundlePath = new Path("/", EntityUtil.getStagingPath(process));
         mapper.map(cluster, bundlePath);
         assertTrue(fs.exists(bundlePath));
 

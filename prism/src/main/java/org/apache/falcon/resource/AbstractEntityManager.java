@@ -198,6 +198,7 @@ public abstract class AbstractEntityManager {
      * @return APIResult
      */
     public APIResult delete(HttpServletRequest request, String type, String entity, String colo) {
+
         checkColo(colo);
         try {
             EntityType entityType = EntityType.valueOf(type.toUpperCase());
@@ -239,31 +240,34 @@ public abstract class AbstractEntityManager {
             validate(newEntity);
 
             validateUpdate(oldEntity, newEntity);
-            configStore.initiateUpdate(newEntity);
-
             List<String> effectiveTimes = new ArrayList<String>();
-            Date effectiveTime =
-                StringUtils.isEmpty(effectiveTimeStr) ? null : EntityUtil.parseDateUTC(effectiveTimeStr);
-            //Update in workflow engine
-            if (!DeploymentUtil.isPrism()) {
-                Set<String> oldClusters = EntityUtil.getClustersDefinedInColos(oldEntity);
-                Set<String> newClusters = EntityUtil.getClustersDefinedInColos(newEntity);
-                newClusters.retainAll(oldClusters); //common clusters for update
-                oldClusters.removeAll(newClusters); //deleted clusters
+            if (!EntityUtil.equals(oldEntity, newEntity)) {
+                configStore.initiateUpdate(newEntity);
+                //Update in workflow engine
+                Date effectiveTime =
+                    StringUtils.isEmpty(effectiveTimeStr) ? null : EntityUtil.parseDateUTC(effectiveTimeStr);
+                if (!DeploymentUtil.isPrism()) {
+                    Set<String> oldClusters = EntityUtil.getClustersDefinedInColos(oldEntity);
+                    Set<String> newClusters = EntityUtil.getClustersDefinedInColos(newEntity);
+                    newClusters.retainAll(oldClusters); //common clusters for update
+                    oldClusters.removeAll(newClusters); //deleted clusters
 
-                for (String cluster : newClusters) {
-                    Date myEffectiveTime = validateEffectiveTime(newEntity, cluster, effectiveTime);
-                    Date effectiveEndTime = getWorkflowEngine().update(oldEntity, newEntity, cluster, myEffectiveTime);
-                    if (effectiveEndTime != null) {
-                        effectiveTimes.add("(" + cluster + ", " + SchemaHelper.formatDateUTC(effectiveEndTime) + ")");
+                    for (String cluster : newClusters) {
+                        Date myEffectiveTime = validateEffectiveTime(newEntity, cluster, effectiveTime);
+                        Date effectiveEndTime = getWorkflowEngine().update(oldEntity, newEntity, cluster,
+                            myEffectiveTime);
+                        if (effectiveEndTime != null) {
+                            effectiveTimes.add("(" + cluster + ", "
+                                + SchemaHelper.formatDateUTC(effectiveEndTime) + ")");
+                        }
+                    }
+                    for (String cluster : oldClusters) {
+                        getWorkflowEngine().delete(oldEntity, cluster);
                     }
                 }
-                for (String cluster : oldClusters) {
-                    getWorkflowEngine().delete(oldEntity, cluster);
-                }
-            }
 
-            configStore.update(entityType, newEntity);
+                configStore.update(entityType, newEntity);
+            }
 
             return new APIResult(APIResult.Status.SUCCEEDED, entityName + " updated successfully"
                     + (effectiveTimes.isEmpty() ? "" : " with effect from " + effectiveTimes));

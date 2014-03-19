@@ -22,6 +22,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.Tag;
 import org.apache.falcon.converter.OozieProcessMapper;
+import org.apache.falcon.entity.ClusterHelper;
 import org.apache.falcon.entity.EntityUtil;
 import org.apache.falcon.entity.FeedHelper;
 import org.apache.falcon.entity.ProcessHelper;
@@ -108,7 +109,7 @@ public class OozieProcessWorkflowBuilder extends OozieWorkflowBuilder<Process> {
         }
 
         Cluster cluster = CONFIG_STORE.get(EntityType.CLUSTER, processCluster.getName());
-        Path bundlePath = EntityUtil.getNewStagingPath(cluster, process);
+        Path bundlePath = new Path(ClusterHelper.getLocation(cluster, "staging"), EntityUtil.getStagingPath(process));
         Process processClone = (Process) process.copy();
         EntityUtil.setStartDate(processClone, clusterName, startDate);
 
