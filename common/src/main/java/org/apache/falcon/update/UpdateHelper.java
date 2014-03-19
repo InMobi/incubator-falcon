@@ -139,22 +139,16 @@ public final class UpdateHelper {
         }
     }
 
-    /**
-     * Recursively traverses each file and tracks checksum. If dest != null, each traversed file is copied to dest
-     * @param fs FileSystem
-     * @param src file/directory
-     * @param dest directory always
-     * @return checksums
-     * @throws FalconException
-     */
+    //Recursively traverses each file and tracks checksum
+    //If dest != null, each traversed file is copied to dest
     public static Map<String, String> checksumAndCopy(FileSystem fs, Path src, Path dest) throws FalconException {
         try {
-            Configuration conf = new Configuration();
-            Map<String, String> paths = new HashMap<String, String>();
             if (dest != null && !fs.exists(dest) && !fs.mkdirs(dest)) {
                 throw new FalconException("mkdir failed on " + dest);
             }
 
+            Configuration conf = new Configuration();
+            Map<String, String> paths = new HashMap<String, String>();
             if (fs.isFile(src)) {
                 paths.put(src.toString(), fs.getFileChecksum(src).toString());
                 if (dest != null) {
@@ -166,12 +160,8 @@ public final class UpdateHelper {
                 FileStatus[] files = fs.listStatus(src);
                 if (files != null) {
                     for (FileStatus file : files) {
-                        if (fs.isFile(file.getPath())) {
-                            paths.putAll(checksumAndCopy(fs, file.getPath(), dest));
-                        } else {
-                            paths.putAll(checksumAndCopy(fs, file.getPath(),
-                                    ((dest == null) ? null : new Path(dest, file.getPath().getName()))));
-                        }
+                        paths.putAll(checksumAndCopy(fs, file.getPath(),
+                                ((dest == null) ? null : new Path(dest, file.getPath().getName()))));
                     }
                 }
             }
