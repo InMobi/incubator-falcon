@@ -62,14 +62,14 @@ public class FalconCLIIT {
                 executeWithURL("entity -submit -type cluster -file " + filePath));
         context.setCluster(filePath);
         Assert.assertEquals(stream.buffer.toString().trim(),
-                "default/Submit successful (cluster) " + context.getClusterName());
+                "falcon/default/Submit successful (cluster) " + context.getClusterName());
 
         filePath = context.overlayParametersOverTemplate(TestContext.FEED_TEMPLATE1, overlay);
         Assert.assertEquals(0,
                 executeWithURL("entity -submit -type feed -file " + filePath));
         Assert.assertEquals(
                 stream.buffer.toString().trim(),
-                "default/Submit successful (feed) "
+                "falcon/default/Submit successful (feed) "
                         + overlay.get("inputFeedName"));
 
         filePath = context.overlayParametersOverTemplate(TestContext.FEED_TEMPLATE2, overlay);
@@ -77,7 +77,7 @@ public class FalconCLIIT {
                 executeWithURL("entity -submit -type feed -file " + filePath));
         Assert.assertEquals(
                 stream.buffer.toString().trim(),
-                "default/Submit successful (feed) "
+                "falcon/default/Submit successful (feed) "
                         + overlay.get("outputFeedName"));
 
         filePath = context.overlayParametersOverTemplate(TestContext.PROCESS_TEMPLATE, overlay);
@@ -86,7 +86,7 @@ public class FalconCLIIT {
                 executeWithURL("entity -submit -type process -file " + filePath));
         Assert.assertEquals(
                 stream.buffer.toString().trim(),
-                "default/Submit successful (process) "
+                "falcon/default/Submit successful (process) "
                         + overlay.get("processName"));
     }
 

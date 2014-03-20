@@ -36,6 +36,9 @@ Trunk (Unreleased)
     Srikanth Sundarrajan)
 
   BUG FIXES
+    FALCON-28 unable to submit/delete feed or process which had been attempted submit 
+    with wrong cluster. (Shwetha GS)
+
     FALCON-331 Summary API returning NPE if only start is passed. (Shwetha GS)
 
     FALCON-323 Summary API deserialization fails if array has only one element.
