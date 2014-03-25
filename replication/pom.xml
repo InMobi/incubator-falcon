@@ -23,7 +23,7 @@
     <parent>
         <groupId>org.apache.falcon</groupId>
         <artifactId>falcon-main</artifactId>
-        <version>0.4.6-incubating-SNAPSHOT</version>
+        <version>0.4.6-incubating</version>
     </parent>
     <artifactId>falcon-replication</artifactId>
     <description>Apache Falcon Replication Module</description>
