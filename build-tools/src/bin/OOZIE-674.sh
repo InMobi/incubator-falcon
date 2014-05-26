@@ -27,7 +27,7 @@ fi
 mkdir -p ../target
 pushd ../target
 rm -rf oozie-3.2.0-incubating*
-curl -v "http://www.apache.org/dist/oozie/3.2.0-incubating/oozie-3.2.0-incubating.tar.gz" -o oozie-3.2.0-incubating.tgz
+curl -v "http://archive.apache.org/dist/oozie/3.2.0-incubating/oozie-3.2.0-incubating.tar.gz" -o oozie-3.2.0-incubating.tgz
 tar -xzvf oozie-3.2.0-incubating.tgz
 cd oozie-3.2.0-incubating
 pwd
