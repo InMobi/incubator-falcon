@@ -28,6 +28,9 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
+   Extend time functions added in Falcon 0.6 to support current & last week are giving 
+   UnsupportedOperationException. (Srikanth Sundarrajan via Shwetha GS)
+
    FALCON-566 update throwing null job id exception. (Shwetha GS)
 
    FALCON-514 Falcon CLI giving error when using -file option with -rerun in 
