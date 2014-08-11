@@ -28,6 +28,8 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
+   FALCON-571 user libs not getting loaded during process execution. (Shwetha GS via Suhas Vasu)
+
    FALCON-556 Feed Replication _SUCCESS is not getting created on target directory.
    (pavan kumar kolamuri via Suhas Vasu)
 
