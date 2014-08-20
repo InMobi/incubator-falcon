@@ -28,6 +28,8 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
+   FALCON-611 Post process arg status is in 'FAILED' state always
+
    FALCON-616 cluster submission should fail when shared libs copy fail. (Shwetha GS)
 
    FALCON-577 Extend time functions added in Falcon 0.6 to support current & last week are giving 
