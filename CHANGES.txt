@@ -28,7 +28,9 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
-   Extend time functions added in Falcon 0.6 to support current & last week are giving 
+   FALCON-616 cluster submission should fail when shared libs copy fail. (Shwetha GS)
+
+   FALCON-577 Extend time functions added in Falcon 0.6 to support current & last week are giving 
    UnsupportedOperationException. (Srikanth Sundarrajan via Shwetha GS)
 
    FALCON-566 update throwing null job id exception. (Shwetha GS)
