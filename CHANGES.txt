@@ -28,6 +28,9 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
+   FALCON-598 org.apache.falcon.entity.ProcessHelper throws NullPointerException if the process has 
+   no inputs OR no outputs defined. (Balu Vellanki via Venkatesh Seetharam)
+
    FALCON-611 Post process arg status is in 'FAILED' state always
 
    FALCON-616 cluster submission should fail when shared libs copy fail. (Shwetha GS)

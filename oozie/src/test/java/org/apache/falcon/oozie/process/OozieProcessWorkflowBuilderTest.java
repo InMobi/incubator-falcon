@@ -467,7 +467,8 @@ public class OozieProcessWorkflowBuilderTest extends AbstractTestBase {
 
         ACTION hiveNode = getAction(parentWorkflow, "user-action");
 
-        JAXBElement<org.apache.falcon.oozie.hive.ACTION> actionJaxbElement = OozieUtils.unMarshalHiveAction(hiveNode);
+        JAXBElement<org.apache.falcon.oozie.hive.ACTION> actionJaxbElement = OozieUtils.unMarshalHiveAction(
+                hiveNode);
         org.apache.falcon.oozie.hive.ACTION hiveAction = actionJaxbElement.getValue();
 
         Assert.assertEquals(hiveAction.getScript(),
@@ -579,14 +580,18 @@ public class OozieProcessWorkflowBuilderTest extends AbstractTestBase {
     private Map<String, String> getExpectedProperties(Feed inFeed, Feed outFeed,
                                                       Process process) throws FalconException {
         Map<String, String> expected = new HashMap<String, String>();
-        for (Input input : process.getInputs().getInputs()) {
-            CatalogStorage storage = (CatalogStorage) FeedHelper.createStorage(cluster, inFeed);
-            propagateStorageProperties(input.getName(), storage, expected);
+        if (process.getInputs() != null) {
+            for (Input input : process.getInputs().getInputs()) {
+                CatalogStorage storage = (CatalogStorage) FeedHelper.createStorage(cluster, inFeed);
+                propagateStorageProperties(input.getName(), storage, expected);
+            }
         }
 
-        for (Output output : process.getOutputs().getOutputs()) {
-            CatalogStorage storage = (CatalogStorage) FeedHelper.createStorage(cluster, outFeed);
-            propagateStorageProperties(output.getName(), storage, expected);
+        if (process.getOutputs() != null) {
+            for (Output output : process.getOutputs().getOutputs()) {
+                CatalogStorage storage = (CatalogStorage) FeedHelper.createStorage(cluster, outFeed);
+                propagateStorageProperties(output.getName(), storage, expected);
+            }
         }
 
         return expected;
@@ -703,5 +708,45 @@ public class OozieProcessWorkflowBuilderTest extends AbstractTestBase {
         for (String property : expected) {
             Assert.assertTrue(props.containsKey(property), "expected property missing: " + property);
         }
+    }
+
+    @Test
+    public void testProcessWithInputsNoOutputs() throws Exception {
+        ClusterHelper.getInterface(cluster, Interfacetype.WRITE).setEndpoint(hdfsUrl);
+
+        URL resource = this.getClass().getResource("/config/process/process-no-outputs.xml");
+        Process processEntity = (Process) EntityType.PROCESS.getUnmarshaller().unmarshal(resource);
+        ConfigurationStore.get().publish(EntityType.PROCESS, processEntity);
+
+        OozieEntityBuilder builder = OozieEntityBuilder.get(processEntity);
+        Path bundlePath = new Path("/falcon/staging/workflows", processEntity.getName());
+        builder.build(cluster, bundlePath);
+        assertTrue(fs.exists(bundlePath));
+
+        BUNDLEAPP bundle = getBundle(fs, bundlePath);
+        assertEquals(EntityUtil.getWorkflowName(processEntity).toString(), bundle.getName());
+        assertEquals(1, bundle.getCoordinator().size());
+        assertEquals(EntityUtil.getWorkflowName(Tag.DEFAULT, processEntity).toString(),
+                bundle.getCoordinator().get(0).getName());
+    }
+
+    @Test
+    public void testProcessNoInputsWithOutputs() throws Exception {
+        ClusterHelper.getInterface(cluster, Interfacetype.WRITE).setEndpoint(hdfsUrl);
+
+        URL resource = this.getClass().getResource("/config/process/process-no-inputs.xml");
+        Process processEntity = (Process) EntityType.PROCESS.getUnmarshaller().unmarshal(resource);
+        ConfigurationStore.get().publish(EntityType.PROCESS, processEntity);
+
+        OozieEntityBuilder builder = OozieEntityBuilder.get(processEntity);
+        Path bundlePath = new Path("/falcon/staging/workflows", processEntity.getName());
+        builder.build(cluster, bundlePath);
+        assertTrue(fs.exists(bundlePath));
+
+        BUNDLEAPP bundle = getBundle(fs, bundlePath);
+        assertEquals(EntityUtil.getWorkflowName(processEntity).toString(), bundle.getName());
+        assertEquals(1, bundle.getCoordinator().size());
+        assertEquals(EntityUtil.getWorkflowName(Tag.DEFAULT, processEntity).toString(),
+                bundle.getCoordinator().get(0).getName());
     }
 }
