@@ -28,6 +28,8 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
+   FALCON-630 late data rerun for process broken in trunk. (Shwetha GS)
+
    FALCON-598 org.apache.falcon.entity.ProcessHelper throws NullPointerException if the process has 
    no inputs OR no outputs defined. (Balu Vellanki via Venkatesh Seetharam)
 

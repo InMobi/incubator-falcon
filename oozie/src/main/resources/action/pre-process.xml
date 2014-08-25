@@ -40,7 +40,7 @@
         <arg>-paths</arg>
         <arg>${falconInPaths}</arg>
         <arg>-falconInputFeeds</arg>
-        <arg>${falconInputFeeds}</arg>
+        <arg>${falconInputNames}</arg>
         <arg>-falconInputFeedStorageTypes</arg>
         <arg>${falconInputFeedStorageTypes}</arg>
         <capture-output/>

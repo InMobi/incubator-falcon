@@ -254,6 +254,7 @@ public class FeedReplicationCoordinatorBuilder extends OozieCoordinatorBuilder<F
         // late data handler - should-record action
         props.put("falconInputFeeds", entity.getName());
         props.put("falconInPaths", instancePaths);
+        props.put("falconInputNames", entity.getName());
 
         // storage type for each corresponding feed - in this case only one feed is involved
         // needed to compute usage based on storage type in LateDataHandler

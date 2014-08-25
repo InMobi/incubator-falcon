@@ -147,11 +147,13 @@ public class ProcessExecutionCoordinatorBuilder extends OozieCoordinatorBuilder<
         if (entity.getInputs() == null) {
             props.put("falconInputFeeds", "NONE");
             props.put("falconInPaths", IGNORE);
+            props.put("falconInputNames", IGNORE);
             return;
         }
 
         List<String> inputFeeds = new ArrayList<String>();
         List<String> inputPaths = new ArrayList<String>();
+        List<String> inputNames = new ArrayList<String>();
         List<String> inputFeedStorageTypes = new ArrayList<String>();
         for (Input input : entity.getInputs().getInputs()) {
             Feed feed = EntityUtil.getEntity(EntityType.FEED, input.getFeed());
@@ -181,19 +183,21 @@ public class ProcessExecutionCoordinatorBuilder extends OozieCoordinatorBuilder<
                 propagateCatalogTableProperties(input, (CatalogStorage) storage, props);
             }
 
+            inputNames.add(input.getName());
             inputFeeds.add(feed.getName());
             inputPaths.add(inputExpr);
             inputFeedStorageTypes.add(storage.getType().name());
         }
 
-        propagateLateDataProperties(inputFeeds, inputPaths, inputFeedStorageTypes, props);
+        propagateLateDataProperties(inputFeeds, inputNames, inputPaths, inputFeedStorageTypes, props);
     }
 
-    private void propagateLateDataProperties(List<String> inputFeeds, List<String> inputPaths,
+    private void propagateLateDataProperties(List<String> inputFeeds, List<String> inputNames, List<String> inputPaths,
         List<String> inputFeedStorageTypes, Properties props) {
         // populate late data handler - should-record action
         props.put("falconInputFeeds", StringUtils.join(inputFeeds, '#'));
         props.put("falconInPaths", StringUtils.join(inputPaths, '#'));
+        props.put("falconInputNames", StringUtils.join(inputNames, '#'));
 
         // storage type for each corresponding feed sent as a param to LateDataHandler
         // needed to compute usage based on storage type in LateDataHandler

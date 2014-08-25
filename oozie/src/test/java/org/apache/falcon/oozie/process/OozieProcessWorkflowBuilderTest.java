@@ -192,6 +192,8 @@ public class OozieProcessWorkflowBuilderTest extends AbstractTestBase {
         }
         assertEquals(props.get("mapred.job.priority"), "LOW");
         Assert.assertEquals(props.get("logDir"), getLogPath(process));
+        List<Input> inputs = process.getInputs().getInputs();
+        Assert.assertEquals(props.get("falconInputNames"), inputs.get(0).getName() + '#' + inputs.get(1).getName());
 
         assertLibExtensions(fs, coord, EntityType.PROCESS, null);
     }
@@ -565,6 +567,7 @@ public class OozieProcessWorkflowBuilderTest extends AbstractTestBase {
         Assert.assertEquals(props.get("falconInputFeeds"), process.getInputs().getInputs().get(0).getFeed());
         Assert.assertEquals(props.get("falconInPaths"), "${coord:dataIn('input')}");
         Assert.assertEquals(props.get("falconInputFeedStorageTypes"), Storage.TYPE.TABLE.name());
+        Assert.assertEquals(props.get("falconInputNames"), process.getInputs().getInputs().get(0).getName());
 
         // verify the post processing params
         Assert.assertEquals(props.get("feedNames"), process.getOutputs().getOutputs().get(0).getFeed());
@@ -700,6 +703,7 @@ public class OozieProcessWorkflowBuilderTest extends AbstractTestBase {
             EntityInstanceMessage.ARG.feedInstancePaths.getPropName(),
             "falconInputFeeds",
             "falconInPaths",
+            "falconInputNames",
             "userWorkflowName",
             "userWorkflowVersion",
             "userWorkflowEngine",

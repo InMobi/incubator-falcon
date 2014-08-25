@@ -207,6 +207,7 @@ public class OozieFeedWorkflowBuilderTest extends AbstractTestBase {
         Assert.assertEquals(props.get("falconInputFeeds"), feed.getName());
         Assert.assertEquals(props.get("falconInPaths"), "${coord:dataIn('input')}");
         Assert.assertEquals(props.get("falconInPaths"), pathsWithPartitions);
+        Assert.assertEquals(props.get("falconInputNames"), feed.getName());
         Assert.assertEquals(props.get("falconInputFeedStorageTypes"), Storage.TYPE.FILESYSTEM.name());
         Assert.assertEquals(props.get("logDir"), getLogPath(trgCluster, feed));
 
@@ -445,6 +446,7 @@ public class OozieFeedWorkflowBuilderTest extends AbstractTestBase {
         // verify the late data params
         Assert.assertEquals(props.get("falconInputFeeds"), tableFeed.getName());
         Assert.assertEquals(props.get("falconInPaths"), "${coord:dataIn('input')}");
+        Assert.assertEquals(props.get("falconInputNames"), tableFeed.getName());
         Assert.assertEquals(props.get("falconInputFeedStorageTypes"), Storage.TYPE.TABLE.name());
         Assert.assertEquals(props.get("logDir"), getLogPath(trgCluster, tableFeed));
 
