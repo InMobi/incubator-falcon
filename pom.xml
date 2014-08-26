@@ -19,9 +19,9 @@
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <parent>
-        <groupId>org.apache</groupId>
-        <artifactId>apache</artifactId>
-        <version>13</version>
+        <groupId>com.inmobi</groupId>
+        <artifactId>inmobi-master-pom</artifactId>
+        <version>1.0.1</version>
     </parent>
 
     <modelVersion>4.0.0</modelVersion>
@@ -82,9 +82,10 @@
     </mailingLists>
 
     <scm>
-        <connection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-falcon.git</connection>
-        <developerConnection>scm:git:https://git-wip-us.apache.org/repos/asf/incubator-falcon.git</developerConnection>
-        <url>https://git-wip-us.apache.org/repos/asf/incubator-falcon.git</url>
+        <connection>scm:git:https://github.com/InMobi/incubator-falcon.git</connection>
+        <developerConnection>scm:git:https://github.com/InMobi/incubator-falcon.git</developerConnection>
+        <url>scm:git:https://github.com/InMobi/incubator-falcon.git</url>
+        <tag>HEAD</tag>
     </scm>
 
     <distributionManagement>
