@@ -87,7 +87,7 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
         LateDataHandler late = new LateDataHandler();
         Properties properties = handler.getWfEngine().getWorkflowProperties(
                 message.getClusterName(), message.getWfId());
-        String falconInputFeeds = properties.getProperty("falconInputFeeds");
+        String falconInputFeeds = properties.getProperty("falconInputNames");
         String falconInPaths = properties.getProperty("falconInPaths");
         String falconInputFeedStorageTypes = properties.getProperty("falconInputFeedStorageTypes");
         String logDir = properties.getProperty("logDir");
