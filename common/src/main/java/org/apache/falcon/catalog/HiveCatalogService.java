@@ -24,6 +24,7 @@ import org.apache.falcon.entity.v0.cluster.Cluster;
 import org.apache.falcon.entity.v0.cluster.Interfacetype;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.hcatalog.api.HCatAddPartitionDesc;
 import org.apache.hcatalog.api.HCatClient;
 import org.apache.hcatalog.api.HCatDatabase;
 import org.apache.hcatalog.api.HCatPartition;
@@ -50,6 +51,7 @@ public class HiveCatalogService extends AbstractCatalogService {
     private static final Logger LOG = LoggerFactory.getLogger(HiveCatalogService.class);
 
     private static final ConcurrentHashMap<String, HCatClient> CACHE = new ConcurrentHashMap<String, HCatClient>();
+    public static final String MANAGED_TABLE = "MANAGED_TABLE";
 
     public static HCatClient get(Cluster cluster) throws FalconException {
         assert cluster != null : "Cluster cant be null";
@@ -78,7 +80,7 @@ public class HiveCatalogService extends AbstractCatalogService {
         }
     }
 
-    private static HiveConf createHiveConf(String metastoreUrl) {
+    public static HiveConf createHiveConf(String metastoreUrl) {
         HiveConf hcatConf = new HiveConf();
         hcatConf.set("hive.metastore.local", "false");
         hcatConf.setVar(HiveConf.ConfVars.METASTOREURIS, metastoreUrl);
@@ -156,7 +158,7 @@ public class HiveCatalogService extends AbstractCatalogService {
         try {
             HCatClient client = get(catalogUrl);
             HCatTable table = client.getTable(database, tableName);
-            return !table.getTabletype().equals("MANAGED_TABLE");
+            return !table.getTabletype().equals(MANAGED_TABLE);
         } catch (HCatException e) {
             throw new FalconException("Exception checking if the table is external:" + e.getMessage(), e);
         }
@@ -174,7 +176,6 @@ public class HiveCatalogService extends AbstractCatalogService {
             HCatClient client = get(catalogUrl);
             List<HCatPartition> hCatPartitions = client.listPartitionsByFilter(database, tableName, filter);
             for (HCatPartition hCatPartition : hCatPartitions) {
-                LOG.info("Partition: " + hCatPartition.getValues());
                 CatalogPartition partition = createCatalogPartition(hCatPartition);
                 catalogPartitionList.add(partition);
             }
@@ -182,6 +183,32 @@ public class HiveCatalogService extends AbstractCatalogService {
             return catalogPartitionList;
         } catch (HCatException e) {
             throw new FalconException("Exception listing partitions:" + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * List partitions by filter. Executed in the workflow engine.
+     *
+     * @param catalogUrl    url for the catalog service
+     * @param database      database the table belongs to
+     * @param tableName     tableName to check if it exists
+     * @param partitionSpec partition specification
+     * @return list of partitions
+     * @throws org.apache.falcon.FalconException
+     */
+    @Override public List<CatalogPartition> listPartitionsByFilter(String catalogUrl, String database, String tableName,
+        Map<String, String> partitionSpec) throws FalconException {
+        LOG.info("List partitions for: {}, partition filter: {}", tableName, partitionSpec);
+        HCatClient client = get(catalogUrl);
+        try {
+            List<HCatPartition> partitions = client.getPartitions(database, tableName, partitionSpec);
+            List<CatalogPartition> catalogPartitions = new ArrayList<CatalogPartition>();
+            for (HCatPartition hCatPartition : partitions) {
+                catalogPartitions.add(createCatalogPartition(hCatPartition));
+            }
+            return catalogPartitions;
+        } catch (HCatException e) {
+            throw new FalconException(e);
         }
     }
 
@@ -253,5 +280,29 @@ public class HiveCatalogService extends AbstractCatalogService {
         } catch (HCatException e) {
             throw new FalconException("Exception fetching partition columns: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Registers partition in catalog store.
+     *
+     * @param catalogUrl url for the catalog service
+     * @param database   database the table belongs to
+     * @param tableName  table name
+     * @param partSpec list of partition specification as Key=Value pairs
+     * @param path data path
+     * @throws org.apache.falcon.FalconException
+     */
+    @Override public void registerPartition(String catalogUrl, String database, String tableName,
+        Map<String, String> partSpec, String path) throws FalconException {
+        LOG.info("Registering partitions " + partSpec + " for table: " + tableName);
+
+        try {
+            HCatClient client = get(catalogUrl);
+            HCatAddPartitionDesc partDesc = HCatAddPartitionDesc.create(database, tableName, path, partSpec).build();
+            client.addPartition(partDesc);
+        } catch (HCatException e) {
+            throw new FalconException("Exception while registering partitions: " + e.getMessage(), e);
+        }
+
     }
 }

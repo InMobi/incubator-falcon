@@ -131,7 +131,7 @@ public class FeedEntityParserTest extends AbstractTestBase {
         assertEquals(feed.getClusters().getClusters().get(1).getRetention()
                 .getLimit().toString(), "hours(6)");
 
-        assertEquals("${nameNode}/projects/falcon/clicks",
+        assertEquals("${nameNode}/projects/falcon/clicks/${YEAR}/${MONTH}/${DAY}/${HOUR}",
                 FeedHelper.createStorage(feed).getUriTemplate(LocationType.DATA));
         assertEquals("${nameNode}/projects/falcon/clicksMetaData",
                 FeedHelper.createStorage(feed).getUriTemplate(LocationType.META));

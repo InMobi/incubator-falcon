@@ -54,7 +54,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -83,8 +82,6 @@ public class FeedEvictor extends Configured implements Tool {
 
     public static final AtomicReference<PrintStream> OUT = new AtomicReference<PrintStream>(System.out);
 
-    private static final String FORMAT = "yyyyMMddHHmm";
-
     // constants to be used while preparing HCatalog partition filter query
     private static final String FILTER_ST_BRACKET = "(";
     private static final String FILTER_END_BRACKET = ")";
@@ -106,7 +103,6 @@ public class FeedEvictor extends Configured implements Tool {
         }
     }
 
-    private final Map<VARS, String> map = new TreeMap<VARS, String>();
     private final StringBuffer instancePaths = new StringBuffer("instancePaths=");
     private final StringBuffer buffer = new StringBuffer();
 
@@ -168,7 +164,7 @@ public class FeedEvictor extends Configured implements Tool {
         LOG.info("Normalized path: {}", feedPath);
 
         Pair<Date, Date> range = getDateRange(retentionLimit);
-        String dateMask = getDateFormatInPath(feedPath);
+        String dateMask = FeedHelper.getDateFormatInPath(feedPath);
 
         List<Path> toBeDeleted = discoverInstanceToDelete(feedPath, timeZone, dateMask, range.first, fs);
         if (toBeDeleted.isEmpty()) {
@@ -176,12 +172,12 @@ public class FeedEvictor extends Configured implements Tool {
             return;
         }
 
-        DateFormat dateFormat = new SimpleDateFormat(FORMAT);
+        DateFormat dateFormat = new SimpleDateFormat(FeedHelper.FORMAT);
         dateFormat.setTimeZone(TimeZone.getTimeZone(timeZone));
         Path feedBasePath = getFeedBasePath(feedPath);
         for (Path path : toBeDeleted) {
             deleteInstance(fs, path, feedBasePath);
-            Date date = getDate(path, feedPath, dateMask, timeZone);
+            Date date = FeedHelper.getDate(path, feedPath, dateMask, timeZone);
             buffer.append(dateFormat.format(date)).append(',');
             instancePaths.append(path).append(",");
         }
@@ -224,7 +220,7 @@ public class FeedEvictor extends Configured implements Tool {
 
         List<Path> toBeDeleted = new ArrayList<Path>();
         for (FileStatus file : files) {
-            Date date = getDate(new Path(file.getPath().toUri().getPath()),
+            Date date = FeedHelper.getDate(new Path(file.getPath().toUri().getPath()),
                     inPath, dateMask, timeZone);
             LOG.debug("Considering {}", file.getPath().toUri().getPath());
             LOG.debug("Date: {}", date);
@@ -233,16 +229,6 @@ public class FeedEvictor extends Configured implements Tool {
             }
         }
         return toBeDeleted;
-    }
-
-    private String getDateFormatInPath(String inPath) {
-        String mask = extractDatePartFromPathMask(inPath, inPath);
-        //yyyyMMddHHmm
-        return mask.replaceAll(VARS.YEAR.regex(), "yyyy")
-                .replaceAll(VARS.MONTH.regex(), "MM")
-                .replaceAll(VARS.DAY.regex(), "dd")
-                .replaceAll(VARS.HOUR.regex(), "HH")
-                .replaceAll(VARS.MINUTE.regex(), "mm");
     }
 
     private FileStatus[] findFilesForFeed(FileSystem fs, String feedBasePath) throws IOException {
@@ -255,65 +241,6 @@ public class FeedEvictor extends Configured implements Tool {
         }
         LOG.info("Searching for {}", feedBasePath);
         return fs.globStatus(new Path(feedBasePath));
-    }
-
-    private String extractDatePartFromPathMask(String mask, String inPath) {
-        String[] elements = FeedDataPath.PATTERN.split(mask);
-
-        String out = inPath;
-        for (String element : elements) {
-            out = out.replaceFirst(element, "");
-        }
-        return out;
-    }
-
-    //consider just the first occurrence of the pattern
-    private Date getDate(Path file, String inMask,
-                         String dateMask, String timeZone) {
-        String path = extractDatePartFromPathMask(inMask, file.toString());
-        populateDatePartMap(path, dateMask);
-
-        String errArg = file + "(" + inMask + ")";
-        if (map.isEmpty()) {
-            LOG.warn("No date present in {}", errArg);
-            return null;
-        }
-
-        StringBuilder date = new StringBuilder();
-        int ordinal = 0;
-        for (VARS var : map.keySet()) {
-            if (ordinal++ == var.ordinal()) {
-                date.append(map.get(var));
-            } else {
-                LOG.warn("Prior element to {} is missing {}", var, errArg);
-                return null;
-            }
-        }
-
-        try {
-            DateFormat dateFormat = new SimpleDateFormat(FORMAT.
-                    substring(0, date.length()));
-            dateFormat.setTimeZone(TimeZone.getTimeZone(timeZone));
-            return dateFormat.parse(date.toString());
-        } catch (ParseException e) {
-            LOG.warn("Unable to parse date: {}, {}", date, errArg);
-            return null;
-        }
-    }
-
-    private void populateDatePartMap(String path, String mask) {
-        map.clear();
-        Matcher matcher = FeedDataPath.DATE_FIELD_PATTERN.matcher(mask);
-        int start = 0;
-        while (matcher.find(start)) {
-            String subMask = mask.substring(matcher.start(), matcher.end());
-            String subPath = path.substring(matcher.start(), matcher.end());
-            VARS var = VARS.from(subMask);
-            if (!map.containsKey(var)) {
-                map.put(var, subPath);
-            }
-            start = matcher.start() + 1;
-        }
     }
 
     private boolean isDateInRange(Date date, Date start) {

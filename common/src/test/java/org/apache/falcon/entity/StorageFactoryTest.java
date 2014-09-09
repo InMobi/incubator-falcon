@@ -99,7 +99,7 @@ public class StorageFactoryTest {
     @DataProvider (name = "locationsDataProvider")
     private Object[][] createLocationsDataProvider() {
         return new Object[][] {
-            {fsFeedWithUniformStorage, "/projects/falcon/clicks"},
+            {fsFeedWithUniformStorage, "/projects/falcon/clicks/${YEAR}/${MONTH}/${DAY}/${HOUR}"},
             {fsFeedWithOverriddenStorage, "/testCluster/projects/falcon/clicks"},
         };
     }
@@ -139,7 +139,8 @@ public class StorageFactoryTest {
     @DataProvider (name = "uniformFeedStorageDataProvider")
     private Object[][] createUniformFeedStorageDataProvider() {
         return new Object[][] {
-            {fsFeedWithUniformStorage, Storage.TYPE.FILESYSTEM, "${nameNode}/projects/falcon/clicks"},
+            {fsFeedWithUniformStorage, Storage.TYPE.FILESYSTEM,
+                "${nameNode}/projects/falcon/clicks/${YEAR}/${MONTH}/${DAY}/${HOUR}", },
             {fsFeedWithOverriddenStorage, Storage.TYPE.FILESYSTEM, "${nameNode}/projects/falcon/clicks"},
             {tableFeedWithUniformStorage, Storage.TYPE.TABLE, UNIFORM_TABLE},
             {tableFeedWithOverriddenStorage, Storage.TYPE.TABLE, OVERRIDETBL},
@@ -161,7 +162,8 @@ public class StorageFactoryTest {
     @DataProvider (name = "overriddenFeedStorageDataProvider")
     private Object[][] createFeedStorageDataProvider() {
         return new Object[][] {
-            {fsFeedWithUniformStorage, Storage.TYPE.FILESYSTEM, "/projects/falcon/clicks"},
+            {fsFeedWithUniformStorage, Storage.TYPE.FILESYSTEM,
+                "/projects/falcon/clicks/${YEAR}/${MONTH}/${DAY}/${HOUR}", },
             {fsFeedWithOverriddenStorage, Storage.TYPE.FILESYSTEM, "/testCluster/projects/falcon/clicks"},
             {tableFeedWithUniformStorage, Storage.TYPE.TABLE, "/default/clicks/ds=${YEAR}-${MONTH}-${DAY}-${HOUR}"},
             {tableFeedWithOverriddenStorage, Storage.TYPE.TABLE, OVERRIDE_TBL_LOC},

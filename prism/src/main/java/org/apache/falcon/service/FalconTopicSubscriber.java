@@ -19,6 +19,8 @@ package org.apache.falcon.service;
 
 import org.apache.falcon.FalconException;
 import org.apache.falcon.aspect.GenericAlert;
+import org.apache.falcon.catalog.CatalogPartitionHandler;
+import org.apache.falcon.catalog.CatalogServiceFactory;
 import org.apache.falcon.entity.EntityUtil;
 import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.SchemaHelper;
@@ -29,12 +31,23 @@ import org.apache.falcon.rerun.handler.AbstractRerunHandler;
 import org.apache.falcon.rerun.handler.RerunHandlerFactory;
 import org.apache.falcon.resource.InstancesResult;
 import org.apache.falcon.security.CurrentUser;
+import org.apache.falcon.workflow.FalconPostProcessing.Arg;
 import org.apache.falcon.workflow.WorkflowEngineFactory;
 import org.apache.falcon.workflow.engine.AbstractWorkflowEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.*;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.ExceptionListener;
+import javax.jms.JMSException;
+import javax.jms.MapMessage;
+import javax.jms.Message;
+import javax.jms.MessageListener;
+import javax.jms.Session;
+import javax.jms.Topic;
+import javax.jms.TopicSession;
+import javax.jms.TopicSubscriber;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Date;
 
@@ -128,6 +141,8 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
                     SchemaHelper.formatDateUTC(startTime), duration);
 
                 notifyMetadataMappingService(entityName, operation, mapMessage.getString(ARG.logDir.getArgName()));
+
+                registerHCatPartitions(mapMessage);
             }
         } catch (JMSException e) {
             LOG.info("Error in onMessage for subscriber of topic: {}", this, e);
@@ -135,6 +150,22 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
             LOG.info("Error in onMessage for subscriber of topic: {}", this, e);
         } catch (Exception e) {
             LOG.info("Error in onMessage for subscriber of topic: {}", this, e);
+        }
+    }
+
+    private void registerHCatPartitions(MapMessage mapMessage) throws FalconException {
+        if (CatalogServiceFactory.isEnabled()) {
+            CatalogPartitionHandler handler = CatalogPartitionHandler.get();
+            try {
+                String[] outFeeds = mapMessage.getString(Arg.FEED_NAMES.getOptionName()).split(",");
+                String[] outPaths = mapMessage.getString(Arg.FEED_INSTANCE_PATHS.getOptionName()).split(",");
+                String clusterName = mapMessage.getString(Arg.CLUSTER.getOptionName());
+                for (int i = 0; i < outFeeds.length; i++) {
+                    handler.registerPartitions(clusterName, outFeeds[i], outPaths[i]);
+                }
+            } catch (JMSException e) {
+                throw new FalconException(e);
+            }
         }
     }
 

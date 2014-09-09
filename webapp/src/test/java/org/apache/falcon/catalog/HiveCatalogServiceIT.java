@@ -206,7 +206,7 @@ public class HiveCatalogServiceIT {
     public void testListPartitionsByFilterNull() throws Exception {
 
         List<CatalogPartition> filteredPartitions = hiveCatalogService.listPartitionsByFilter(
-                METASTORE_URL, DATABASE_NAME, TABLE_NAME, null);
+                METASTORE_URL, DATABASE_NAME, TABLE_NAME, (String)null);
         Assert.assertEquals(filteredPartitions.size(), 3);
     }
 

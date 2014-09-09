@@ -82,6 +82,20 @@ public abstract class AbstractCatalogService {
         throws FalconException;
 
     /**
+     * List partitions by filter. Executed in the workflow engine.
+     *
+     * @param catalogUrl url for the catalog service
+     * @param database database the table belongs to
+     * @param tableName tableName to check if it exists
+     * @param partitionSpec partition specification
+     * @return list of partitions
+     * @throws FalconException
+     */
+    public abstract List<CatalogPartition> listPartitionsByFilter(String catalogUrl, String database,
+        String tableName, Map<String, String> partitionSpec)
+        throws FalconException;
+
+    /**
      * Drops a given partition. Executed in the workflow engine.
      *
      * @param catalogUrl url for the catalog service
@@ -117,4 +131,16 @@ public abstract class AbstractCatalogService {
      */
     public abstract List<String> getTablePartitionCols(String catalogUrl, String database,
                                                      String tableName) throws FalconException;
+
+    /**
+     * Registers partition in catalog store.
+     * @param catalogUrl url for the catalog service
+     * @param database database the table belongs to
+     * @param tableName table name
+     * @param partSpec list of partition specifications as Key=Value pairs
+     * @param path data path
+     * @throws FalconException
+     */
+    public abstract void registerPartition(String catalogUrl, String database, String tableName,
+        Map<String, String> partSpec, String path) throws FalconException;
 }

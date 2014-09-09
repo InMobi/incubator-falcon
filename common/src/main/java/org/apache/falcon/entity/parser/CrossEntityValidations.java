@@ -50,7 +50,7 @@ public final class CrossEntityValidations {
                 ExpressionHelper evaluator = ExpressionHelper.get();
 
                 Validity processValidity = ProcessHelper.getCluster(process, clusterName).getValidity();
-                ExpressionHelper.setReferenceDate(processValidity.getStart());
+                evaluator.setReferenceDate(processValidity.getStart());
                 Date instStart = evaluator.evaluate(instStartEL, Date.class);
                 if (instStart.before(feedStart)) {
                     throw new ValidationException("Start instance  " + instStartEL + " of feed " + feed.getName()
@@ -89,7 +89,7 @@ public final class CrossEntityValidations {
         ExpressionHelper evaluator = ExpressionHelper.get();
 
         Date now = new Date();
-        ExpressionHelper.setReferenceDate(now);
+        evaluator.setReferenceDate(now);
         Date instStart = evaluator.evaluate(startInstance, Date.class);
         long feedDuration = evaluator.evaluate(feedRetention, Long.class);
         Date feedStart = new Date(now.getTime() - feedDuration);
@@ -114,7 +114,7 @@ public final class CrossEntityValidations {
                 String instEL = output.getInstance();
                 ExpressionHelper evaluator = ExpressionHelper.get();
                 Validity processValidity = ProcessHelper.getCluster(process, clusterName).getValidity();
-                ExpressionHelper.setReferenceDate(processValidity.getStart());
+                evaluator.setReferenceDate(processValidity.getStart());
                 Date inst = evaluator.evaluate(instEL, Date.class);
                 if (inst.before(feedStart)) {
                     throw new ValidationException("Instance  " + instEL + " of feed " + feed.getName()

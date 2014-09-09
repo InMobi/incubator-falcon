@@ -21,6 +21,8 @@ package org.apache.falcon.entity;
 import org.apache.commons.lang.StringUtils;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.Tag;
+import org.apache.falcon.entity.common.FeedDataPath;
+import org.apache.falcon.entity.common.FeedDataPath.VARS;
 import org.apache.falcon.entity.v0.EntityType;
 import org.apache.falcon.entity.v0.cluster.Property;
 import org.apache.falcon.entity.v0.feed.CatalogTable;
@@ -30,13 +32,24 @@ import org.apache.falcon.entity.v0.feed.Location;
 import org.apache.falcon.entity.v0.feed.Locations;
 import org.apache.falcon.expression.ExpressionHelper;
 import org.apache.falcon.util.BuildProperties;
+import org.apache.hadoop.fs.Path;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URISyntaxException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.TimeZone;
+import java.util.TreeMap;
+import java.util.regex.Matcher;
 
 /**
  * Feed entity helper methods.
@@ -193,7 +206,7 @@ public final class FeedHelper {
         return getStorageType(feed, feedCluster);
     }
 
-    protected static List<Location> getLocations(Cluster cluster, Feed feed) {
+    public static List<Location> getLocations(Cluster cluster, Feed feed) {
         // check if locations are overridden in cluster
         final Locations clusterLocations = cluster.getLocations();
         if (clusterLocations != null
@@ -288,5 +301,89 @@ public final class FeedHelper {
         }
         props.put("userWorkflowVersion", version);
         return props;
+    }
+
+    /**
+     * Replaces timed variables with corresponding time notations e.g., ${YEAR} with yyyy and so on.
+     * @param templatePath - template feed path
+     * @return time notations
+     */
+    public static String getDateFormatInPath(String templatePath) {
+        String mask = extractDatePartFromPathMask(templatePath, templatePath);
+        //yyyyMMddHHmm
+        return mask.replaceAll(VARS.YEAR.regex(), "yyyy")
+            .replaceAll(VARS.MONTH.regex(), "MM")
+            .replaceAll(VARS.DAY.regex(), "dd")
+            .replaceAll(VARS.HOUR.regex(), "HH")
+            .replaceAll(VARS.MINUTE.regex(), "mm");
+    }
+
+    private static String extractDatePartFromPathMask(String mask, String inPath) {
+        String[] elements = FeedDataPath.PATTERN.split(mask);
+
+        String out = inPath;
+        for (String element : elements) {
+            out = out.replaceFirst(element, "");
+        }
+        return out;
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(FeedHelper.class);
+    public static final String FORMAT = "yyyyMMddHHmm";
+
+    /**
+     *  Extracts date from the actual data path e.g., /path/2014/05/06 maps to 2014-05-06T00:00Z.
+     * @param file - actual data path
+     * @param templatePath - template path from feed definition
+     * @param dateMask - path mask from getDateFormatInPath()
+     * @param timeZone
+     * @return date corresponding to the path
+     */
+    //consider just the first occurrence of the pattern
+    public static Date getDate(Path file, String templatePath, String dateMask, String timeZone) {
+        String path = extractDatePartFromPathMask(templatePath, file.toString());
+        Map<VARS, String> map = getDatePartMap(path, dateMask);
+
+        String errArg = file + "(" + templatePath + ")";
+        if (map.isEmpty()) {
+            LOG.warn("No date present in {}", errArg);
+            return null;
+        }
+
+        StringBuilder date = new StringBuilder();
+        int ordinal = 0;
+        for (Entry<VARS, String> entry : map.entrySet()) {
+            if (ordinal++ == entry.getKey().ordinal()) {
+                date.append(entry.getValue());
+            } else {
+                LOG.warn("Prior element to {} is missing {}", entry.getKey(), errArg);
+                return null;
+            }
+        }
+
+        try {
+            DateFormat dateFormat = new SimpleDateFormat(FORMAT.substring(0, date.length()));
+            dateFormat.setTimeZone(TimeZone.getTimeZone(timeZone));
+            return dateFormat.parse(date.toString());
+        } catch (ParseException e) {
+            LOG.warn("Unable to parse date: {}, {}", date, errArg);
+            return null;
+        }
+    }
+
+    private static Map<VARS, String> getDatePartMap(String path, String mask) {
+        Map<VARS, String> map = new TreeMap<VARS, String>();
+        Matcher matcher = FeedDataPath.DATE_FIELD_PATTERN.matcher(mask);
+        int start = 0;
+        while (matcher.find(start)) {
+            String subMask = mask.substring(matcher.start(), matcher.end());
+            String subPath = path.substring(matcher.start(), matcher.end());
+            VARS var = VARS.from(subMask);
+            if (!map.containsKey(var)) {
+                map.put(var, subPath);
+            }
+            start = matcher.start() + 1;
+        }
+        return map;
     }
 }

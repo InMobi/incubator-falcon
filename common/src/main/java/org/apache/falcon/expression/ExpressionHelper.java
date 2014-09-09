@@ -20,6 +20,7 @@ package org.apache.falcon.expression;
 
 import org.apache.commons.el.ExpressionEvaluatorImpl;
 import org.apache.falcon.FalconException;
+import org.apache.falcon.entity.common.FeedDataPath.VARS;
 
 import javax.servlet.jsp.el.ELException;
 import javax.servlet.jsp.el.ExpressionEvaluator;
@@ -41,7 +42,12 @@ public final class ExpressionHelper implements FunctionMapper, VariableResolver 
 
     private static final ExpressionHelper INSTANCE = new ExpressionHelper();
 
-    private ThreadLocal<Properties> threadVariables = new ThreadLocal<Properties>();
+    private static ThreadLocal<Properties> threadVariables = new ThreadLocal<Properties>() {
+        @Override
+        public Properties initialValue() {
+            return new Properties();
+        }
+    };
 
     private static final Pattern SYS_PROPERTY_PATTERN = Pattern.compile("\\$\\{[A-Za-z0-9_.]+\\}");
 
@@ -94,7 +100,19 @@ public final class ExpressionHelper implements FunctionMapper, VariableResolver 
     private static ThreadLocal<Date> referenceDate = new ThreadLocal<Date>();
 
     public static void setReferenceDate(Date date) {
+        setReferenceDate(date, TimeZone.getTimeZone("UTC"));
+    }
+
+    public static void setReferenceDate(Date date, TimeZone tz) {
         referenceDate.set(date);
+        Properties vars = threadVariables.get();
+        Calendar cal = Calendar.getInstance(tz);
+        cal.setTime(date);
+        vars.put(VARS.YEAR.name(), cal.get(Calendar.YEAR));
+        vars.put(VARS.MONTH.name(), String.format("%02d", (cal.get(Calendar.MONTH) + 1)));
+        vars.put(VARS.DAY.name(), String.format("%02d", cal.get(Calendar.DAY_OF_MONTH)));
+        vars.put(VARS.HOUR.name(), String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)));
+        vars.put(VARS.MINUTE.name(), String.format("%02d", cal.get(Calendar.MINUTE)));
     }
 
     private static int getDayOffset(String weekDayName) {

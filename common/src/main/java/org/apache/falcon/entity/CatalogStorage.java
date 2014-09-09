@@ -56,7 +56,7 @@ public class CatalogStorage implements Storage {
         this(CATALOG_URL, feed.getTable());
     }
 
-    protected CatalogStorage(Cluster cluster, CatalogTable table) throws URISyntaxException {
+    public CatalogStorage(Cluster cluster, CatalogTable table) throws URISyntaxException {
         this(ClusterHelper.getInterface(cluster, Interfacetype.REGISTRY).getEndpoint(), table);
     }
 

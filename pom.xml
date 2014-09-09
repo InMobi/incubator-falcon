@@ -343,6 +343,7 @@
                                 <exclude>**/maven-eclipse.xml</exclude>
                                 <exclude>**/.externalToolBuilders/**</exclude>
                                 <exclude>html5-ui/**</exclude>
+                                <exclude>metastore_db/**</exclude>
                             </excludes>
                         </configuration>
                         <executions>
@@ -955,6 +956,13 @@
                         <artifactId>hbase-client</artifactId>
                     </exclusion>
                 </exclusions>
+            </dependency>
+
+            <!-- for embedded hcat for UTs -->
+            <dependency>
+                <groupId>org.apache.derby</groupId>
+                <artifactId>derby</artifactId>
+                <version>10.6.1.0</version>
             </dependency>
 
             <dependency>

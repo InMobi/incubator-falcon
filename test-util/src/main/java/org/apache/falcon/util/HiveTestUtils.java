@@ -18,8 +18,10 @@
 
 package org.apache.falcon.util;
 
-import org.apache.falcon.catalog.HiveCatalogService;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
+import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.ql.Driver;
 import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
 import org.apache.hadoop.hive.ql.session.SessionState;
@@ -27,9 +29,11 @@ import org.apache.hcatalog.api.HCatClient;
 import org.apache.hcatalog.api.HCatCreateDBDesc;
 import org.apache.hcatalog.api.HCatCreateTableDesc;
 import org.apache.hcatalog.api.HCatPartition;
+import org.apache.hcatalog.common.HCatException;
 import org.apache.hcatalog.data.schema.HCatFieldSchema;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,20 +48,20 @@ public final class HiveTestUtils {
 
     public static void createDatabase(String metaStoreUrl,
                                       String databaseName) throws Exception {
-        HCatClient client = HiveCatalogService.get(metaStoreUrl);
+        HCatClient client = getHCatClient(metaStoreUrl);
         HCatCreateDBDesc dbDesc = HCatCreateDBDesc.create(databaseName)
                 .ifNotExists(true).build();
         client.createDatabase(dbDesc);
     }
 
     public static  void dropDatabase(String metaStoreUrl, String databaseName) throws Exception {
-        HCatClient client = HiveCatalogService.get(metaStoreUrl);
+        HCatClient client = getHCatClient(metaStoreUrl);
         client.dropDatabase(databaseName, true, HCatClient.DropDBMode.CASCADE);
     }
 
     public static void createTable(String metaStoreUrl, String databaseName,
                                    String tableName) throws Exception {
-        HCatClient client = HiveCatalogService.get(metaStoreUrl);
+        HCatClient client = getHCatClient(metaStoreUrl);
         ArrayList<HCatFieldSchema> cols = new ArrayList<HCatFieldSchema>();
         cols.add(new HCatFieldSchema("id", HCatFieldSchema.Type.INT, "id comment"));
         cols.add(new HCatFieldSchema("value", HCatFieldSchema.Type.STRING, "value comment"));
@@ -72,7 +76,7 @@ public final class HiveTestUtils {
 
     public static void createTable(String metaStoreUrl, String databaseName, String tableName,
                                    List<String> partitionKeys) throws Exception {
-        HCatClient client = HiveCatalogService.get(metaStoreUrl);
+        HCatClient client = getHCatClient(metaStoreUrl);
         ArrayList<HCatFieldSchema> cols = new ArrayList<HCatFieldSchema>();
         cols.add(new HCatFieldSchema("id", HCatFieldSchema.Type.INT, "id comment"));
         cols.add(new HCatFieldSchema("value", HCatFieldSchema.Type.STRING, "value comment"));
@@ -112,7 +116,7 @@ public final class HiveTestUtils {
                 .location(externalLocation)
                 .build();
 
-        HCatClient client = HiveCatalogService.get(metaStoreUrl);
+        HCatClient client = getHCatClient(metaStoreUrl);
         client.createTable(tableDesc);
     }
 
@@ -147,8 +151,12 @@ public final class HiveTestUtils {
 
     public static void dropTable(String metaStoreUrl, String databaseName,
                                  String tableName) throws Exception {
-        HCatClient client = HiveCatalogService.get(metaStoreUrl);
-        client.dropTable(databaseName, tableName, true);
+        HiveMetaStoreClient client = getHiveMetastoreClient(metaStoreUrl);
+        List<Partition> parts = client.getPartitionsByNames(databaseName, tableName, Arrays.asList("ds"));
+        for (Partition part : parts) {
+            client.dropPartition(databaseName, tableName, part.getValues());
+        }
+        client.dropTable(databaseName, tableName);
     }
 
     public static void startSessionState(String metaStoreUrl) {
@@ -182,6 +190,29 @@ public final class HiveTestUtils {
         Map<String, String> partitionSpec = new HashMap<String, String>();
         partitionSpec.put(partitionKey, partitionValue);
 
-        return HiveCatalogService.get(metastoreUrl).getPartition(databaseName, tableName, partitionSpec);
+        return getHCatClient(metastoreUrl).getPartition(databaseName, tableName, partitionSpec);
     }
+
+    public static List<HCatPartition> getPartitions(String metastoreUrl, String databaseName,
+        String tableName, String partitionKey, String partitionValue) throws HCatException {
+        HCatClient client = getHCatClient(metastoreUrl);
+        Map<String, String> partitionSpec = new HashMap<String, String>();
+        partitionSpec.put(partitionKey, partitionValue);
+        return client.getPartitions(databaseName, tableName, partitionSpec);
+    }
+
+    private static HCatClient getHCatClient(String url) throws HCatException {
+        HiveConf hcatConf = new HiveConf();
+        hcatConf.set("hive.metastore.local", "false");
+        hcatConf.setVar(HiveConf.ConfVars.METASTOREURIS, url);
+        return HCatClient.create(hcatConf);
+    }
+
+    private static HiveMetaStoreClient getHiveMetastoreClient(String url) throws MetaException {
+        HiveConf hcatConf = new HiveConf();
+        hcatConf.set("hive.metastore.local", "false");
+        hcatConf.setVar(HiveConf.ConfVars.METASTOREURIS, url);
+        return new HiveMetaStoreClient(hcatConf);
+    }
+
 }

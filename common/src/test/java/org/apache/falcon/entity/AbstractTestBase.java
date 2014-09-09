@@ -52,7 +52,7 @@ public class AbstractTestBase {
     protected static final String CLUSTER_XML = "/config/cluster/cluster-0.1.xml";
     protected EmbeddedCluster dfsCluster;
     protected Configuration conf = new Configuration();
-    private ConfigurationStore store;
+    protected ConfigurationStore store;
 
     public ConfigurationStore getStore() {
         return store;
@@ -85,7 +85,7 @@ public class AbstractTestBase {
         }
     }
 
-    protected void storeEntity(EntityType type, String name) throws Exception {
+    protected Entity storeEntity(EntityType type, String name) throws Exception {
         Unmarshaller unmarshaller = type.getUnmarshaller();
         store = ConfigurationStore.get();
         store.remove(type, name);
@@ -95,13 +95,13 @@ public class AbstractTestBase {
             cluster.setName(name);
             ClusterHelper.getInterface(cluster, Interfacetype.WRITE).setEndpoint(conf.get("fs.default.name"));
             store.publish(type, cluster);
-            break;
+            return cluster;
 
         case FEED:
             Feed feed = (Feed) unmarshaller.unmarshal(this.getClass().getResource(FEED_XML));
             feed.setName(name);
             store.publish(type, feed);
-            break;
+            return feed;
 
         case PROCESS:
             Process process = (Process) unmarshaller.unmarshal(this.getClass().getResource(PROCESS_XML));
@@ -112,9 +112,11 @@ public class AbstractTestBase {
                 fs.mkdirs(new Path(process.getWorkflow() + "/lib"));
             }
             store.publish(type, process);
-            break;
+            return process;
+
         default:
         }
+        throw new IllegalArgumentException("Unhandled type " + type);
     }
 
     public void setup() throws Exception {

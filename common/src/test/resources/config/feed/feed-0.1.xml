@@ -16,11 +16,10 @@
   See the License for the specific language governing permissions and
   limitations under the License.
   -->
-<feed description="clicks log" name="clicks" xmlns="uri:falcon:feed:0.1"
-        >
+<feed description="clicks log" name="clicks" xmlns="uri:falcon:feed:0.1">
     <partitions>
-        <partition name="fraud"/>
-        <partition name="good"/>
+        <partition name="country"/>
+        <partition name="region"/>
     </partitions>
 
     <groups>online,bi</groups>
@@ -37,7 +36,7 @@
             <retention limit="hours(48)" action="delete"/>
             <!-- Limit can be in Time or Instances 100, Action ENUM DELETE,ARCHIVE -->
             <locations>
-                <location type="data" path="/projects/falcon/clicks"/>
+                <location type="data" path="/projects/falcon/clicks/${YEAR}/${MONTH}/${DAY}/${HOUR}"/>
                 <location type="stats" path="/projects/falcon/clicksStats"/>
                 <location type="meta" path="/projects/falcon/clicksMetaData"/>
             </locations>
@@ -50,11 +49,15 @@
     </clusters>
 
     <locations>
-        <location type="data" path="/projects/falcon/clicks"/>
+        <location type="data" path="/projects/falcon/clicks/${YEAR}/${MONTH}/${DAY}/${HOUR}"/>
         <location type="stats" path="/projects/falcon/clicksStats"/>
         <location type="meta" path="/projects/falcon/clicksMetaData"/>
     </locations>
 
     <ACL owner="testuser" group="group" permission="0x755"/>
     <schema location="/schema/clicks" provider="protobuf"/>
+
+    <properties>
+        <property name="catalog.table" value=""/>
+    </properties>
 </feed>
