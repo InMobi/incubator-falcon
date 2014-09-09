@@ -53,7 +53,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TimeZone;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Listens to JMS message and registers partitions.
@@ -65,8 +64,6 @@ public final class CatalogPartitionHandler {
     public static final ConfigurationStore STORE = ConfigurationStore.get();
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     public static final String CATALOG_TABLE = "catalog.table";
-    private static final ConcurrentHashMap<String, HiveMetaStoreClient> CACHE = new ConcurrentHashMap<String,
-        HiveMetaStoreClient>();
 
     private AbstractCatalogService service;
     private ExpressionHelper evaluator = ExpressionHelper.get();
@@ -132,8 +129,8 @@ public final class CatalogPartitionHandler {
                             + file.getPath());
                     }
 
-                    for (int i = 0; i < dynParts.length; i++) {
-                        partitions.put(feedParts.get(i).getName(), dynParts[i]);
+                    for (int index = 0; index < dynParts.length; index++) {
+                        partitions.put(feedParts.get(index).getName(), dynParts[index]);
                     }
                     service.registerPartition(storage.getCatalogUrl(), storage.getDatabase(), storage.getTable(),
                         partitions, file.getPath().toString());
@@ -149,18 +146,15 @@ public final class CatalogPartitionHandler {
     }
 
     private HiveMetaStoreClient getMetastoreClient(String catalogUrl) throws FalconException {
-        if (!CACHE.containsKey(catalogUrl)) {
-            HiveConf hiveConf = HiveCatalogService.createHiveConf(catalogUrl);
-            try {
-                CACHE.putIfAbsent(catalogUrl, new HiveMetaStoreClient(hiveConf));
-            } catch (MetaException e) {
-                throw new FalconException(e);
-            }
+        HiveConf hiveConf = HiveCatalogService.createHiveConf(catalogUrl);
+        try {
+            return new HiveMetaStoreClient(hiveConf);
+        } catch (MetaException e) {
+            throw new FalconException(e);
         }
-        return CACHE.get(catalogUrl);
     }
 
-    //Use metastore client as hcat client drops even the path for the partition
+    //Use metastore client as hcat client deletes even the path for the partition
     private void dropPartitions(String catalogUrl, String database, String table, Map<String, String> partSpec)
         throws FalconException {
         List<CatalogPartition> partitions = service.listPartitionsByFilter(catalogUrl, database, table, partSpec);
