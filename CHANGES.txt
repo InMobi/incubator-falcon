@@ -28,6 +28,8 @@ Trunk (Unreleased)
   OPTIMIZATIONS
 
   BUG FIXES
+   FALCON-677 Feed data and stats path defaults to /tmp/. (Suhas Vasu via Shwetha GS)
+
    FALCON-630 late data rerun for process broken in trunk. (Shwetha GS)
 
    FALCON-598 org.apache.falcon.entity.ProcessHelper throws NullPointerException if the process has 
