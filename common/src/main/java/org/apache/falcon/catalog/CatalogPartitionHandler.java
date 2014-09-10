@@ -40,6 +40,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hcatalog.common.HCatUtil;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -148,8 +149,10 @@ public final class CatalogPartitionHandler {
     private HiveMetaStoreClient getMetastoreClient(String catalogUrl) throws FalconException {
         HiveConf hiveConf = HiveCatalogService.createHiveConf(catalogUrl);
         try {
-            return new HiveMetaStoreClient(hiveConf);
+            return HCatUtil.getHiveClient(hiveConf);
         } catch (MetaException e) {
+            throw new FalconException(e);
+        } catch (IOException e) {
             throw new FalconException(e);
         }
     }
