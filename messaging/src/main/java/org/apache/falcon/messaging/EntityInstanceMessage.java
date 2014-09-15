@@ -19,6 +19,9 @@
 package org.apache.falcon.messaging;
 
 import org.apache.commons.cli.CommandLine;
+import org.apache.commons.lang.StringUtils;
+import org.apache.falcon.FalconException;
+import org.apache.falcon.entity.v0.EntityType;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -32,9 +35,13 @@ import java.io.InputStream;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Value Object which is stored in JMS Topic as MapMessage.
@@ -132,103 +139,107 @@ public class EntityInstanceMessage {
         return this.keyValueMap.get(ARG.brokerTTL);
     }
 
-    public void convertDateFormat() throws ParseException {
-        String date = this.keyValueMap.remove(ARG.nominalTime);
-        this.keyValueMap.put(ARG.nominalTime, getFalconDate(date));
-        date = this.keyValueMap.remove(ARG.timeStamp);
-        this.keyValueMap.put(ARG.timeStamp, getFalconDate(date));
+    public void convertDateFormat() throws FalconException {
+        try {
+            String date = this.keyValueMap.remove(ARG.nominalTime);
+            this.keyValueMap.put(ARG.nominalTime, getFalconDate(date));
+            date = this.keyValueMap.remove(ARG.timeStamp);
+            this.keyValueMap.put(ARG.timeStamp, getFalconDate(date));
+        } catch(ParseException e) {
+            throw new FalconException(e);
+        }
     }
 
-    public static EntityInstanceMessage[] getMessages(CommandLine cmd)
-        throws ParseException {
+    public static List<EntityInstanceMessage> getMessages(CommandLine cmd) throws ParseException, FalconException {
+        String topicName = cmd.getOptionValue(ARG.topicName.getArgName());
+        EntityType entityType = EntityType.valueOf(cmd.getOptionValue(ARG.entityType.getArgName()).toUpperCase());
 
-        String[] feedNames = getFeedNames(cmd);
-        if (feedNames == null) {
-            return null;
-        }
+        List<EntityInstanceMessage> messages = new ArrayList<EntityInstanceMessage>();
 
-        String[] feedPaths;
-        try {
-            feedPaths = getFeedPaths(cmd);
-        } catch (IOException e) {
-            LOG.error("Error getting instance paths", e);
-            throw new RuntimeException(e);
-        }
-
-        EntityInstanceMessage[] messages = new EntityInstanceMessage[feedPaths.length];
-        for (int i = 0; i < feedPaths.length; i++) {
-            EntityInstanceMessage message = new EntityInstanceMessage();
-            setDefaultValues(cmd, message);
-            // override default values
-            if (message.getEntityType().equalsIgnoreCase("PROCESS")) {
-                message.setFeedName(feedNames[i]);
-            } else {
-                message.setFeedName(message.getFeedName());
+        if (topicName.equals(FALCON_ENTITY_TOPIC_NAME) || entityType == EntityType.PROCESS) {
+            //One message if its system topic || user topic for process
+            EntityOps operation = EntityOps.valueOf(cmd.getOptionValue(ARG.operation.getArgName()));
+            String feedNames = cmd.getOptionValue(ARG.feedNames.getArgName());
+            String feedPaths = cmd.getOptionValue(ARG.feedInstancePaths.getArgName());
+            if (operation == EntityOps.DELETE) {
+                Path logFile = new Path(cmd.getOptionValue(ARG.logFile.getArgName()));
+                feedPaths = getInstancePathsFromFile(logFile);
+                if (feedPaths != null) {
+                    feedNames = repeat(feedNames, ",", feedPaths.split(",").length);
+                }
             }
-            message.setFeedInstancePath(feedPaths[i]);
-            message.convertDateFormat();
-            messages[i] = message;
+            messages.add(createMessage(cmd, feedNames, feedPaths));
+        } else {
+            //one message per feed name
+            Map<String, String> feedMap = getFeedPaths(cmd);
+            for (Entry<String, String> entry : feedMap.entrySet()) {
+                messages.add(createMessage(cmd, entry.getKey(), entry.getValue()));
+            }
         }
-
         return messages;
     }
 
-    private static void setDefaultValues(CommandLine cmd,
-                                         EntityInstanceMessage message) {
+    //Could have used StringUtils.repeat, but is not in commons-lang-2.4
+    private static String repeat(String pattern, String delim, int cnt) {
+        String[] list = new String[cnt];
+        for(int index = 0; index < cnt; index++) {
+            list[index] = pattern;
+        }
+        return StringUtils.join(list, delim);
+    }
+
+    private static EntityInstanceMessage createMessage(CommandLine cmd, String feedNames, String feedPaths)
+        throws FalconException {
+        EntityInstanceMessage message = new EntityInstanceMessage();
         for (ARG arg : ARG.values()) {
             message.keyValueMap.put(arg, cmd.getOptionValue(arg.name()));
         }
+        message.convertDateFormat();
+        message.setFeedName(feedNames);
+        message.setFeedInstancePath(feedPaths);
+        return message;
     }
 
-    private static String[] getFeedNames(CommandLine cmd) {
-        String feedNameStr = cmd.getOptionValue(ARG.feedNames.getArgName());
-        String topicName = cmd.getOptionValue(ARG.topicName.getArgName());
-        if (topicName.equals(FALCON_ENTITY_TOPIC_NAME)) {
-            return new String[]{feedNameStr};
-        }
-        if (feedNameStr.equals("null")) {
-            return null;
-        }
+    private static String getInstancePathsFromFile(Path path) throws FalconException {
+        InputStream instance = null;
+        try {
+            FileSystem fs = path.getFileSystem(new Configuration());
 
-        return feedNameStr.split(",");
+            if (fs.exists(path)) {
+                ByteArrayOutputStream writer = new ByteArrayOutputStream();
+                instance = fs.open(path);
+                IOUtils.copyBytes(instance, writer, 4096, true);
+                String[] instancePaths = writer.toString().split("=");
+                if (instancePaths.length > 1) {
+                    return instancePaths[1];
+                }
+            }
+        } catch(IOException e) {
+            throw new FalconException(e);
+        } finally {
+            org.apache.commons.io.IOUtils.closeQuietly(instance);
+        }
+        return null;
     }
 
-    private static String[] getFeedPaths(CommandLine cmd) throws IOException {
-        String topicName = cmd.getOptionValue(ARG.topicName.getArgName());
-        String operation = cmd.getOptionValue(ARG.operation.getArgName());
-
-        if (topicName.equals(FALCON_ENTITY_TOPIC_NAME)) {
-            LOG.debug("Returning instance paths for Falcon Topic: {}",
-                    cmd.getOptionValue(ARG.feedInstancePaths.getArgName()));
-            return new String[]{cmd.getOptionValue(ARG.feedInstancePaths.getArgName()), };
-        }
-
-        if (operation.equals(EntityOps.GENERATE.name()) || operation.equals(EntityOps.REPLICATE.name())) {
-            LOG.debug("Returning instance paths: {}", cmd.getOptionValue(ARG.feedInstancePaths.getArgName()));
-            return cmd.getOptionValue(ARG.feedInstancePaths.getArgName()).split(",");
-        }
-        //else case of feed retention
-        Path logFile = new Path(cmd.getOptionValue(ARG.logFile.getArgName()));
-        FileSystem fs = FileSystem.get(logFile.toUri(), new Configuration());
-
-        if (!fs.exists(logFile)) {
-            //Evictor Failed without deleting a single path
-            return new String[0];
-        }
-
-        ByteArrayOutputStream writer = new ByteArrayOutputStream();
-        InputStream instance = fs.open(logFile);
-        IOUtils.copyBytes(instance, writer, 4096, true);
-        String[] instancePaths = writer.toString().split("=");
-        fs.delete(logFile, true);
-        LOG.info("Deleted feed instance paths file: {}", logFile);
-        if (instancePaths.length == 1) {
-            LOG.debug("Returning 0 instance paths for feed ");
-            return new String[0];
+    //returns map of feed name and feed paths
+    private static Map<String, String> getFeedPaths(CommandLine cmd) throws FalconException {
+        EntityOps operation = EntityOps.valueOf(cmd.getOptionValue(ARG.operation.getArgName()));
+        Map<String, String> feedMap = new HashMap<String, String>();
+        String[] feedNames = cmd.getOptionValue(ARG.feedNames.getArgName()).split(",");
+        if (operation == EntityOps.DELETE) {
+            Path logFile = new Path(cmd.getOptionValue(ARG.logFile.getArgName()));
+            feedMap.put(feedNames[0], getInstancePathsFromFile(logFile));
         } else {
-            LOG.debug("Returning instance paths for feed {}", instancePaths[1]);
-            return instancePaths[1].split(",");
+            String[] feedPaths = cmd.getOptionValue(ARG.feedInstancePaths.getArgName()).split(",");
+            assert feedNames.length == feedPaths.length;
+            for (int index = 0; index < feedNames.length; index++) {
+                String feedPath = feedMap.get(feedNames[index]);
+                feedPath = (feedPath == null ? feedPaths[index] : (feedPath + "," + feedPaths[index]));
+                feedMap.put(feedNames[index], feedPath);
+            }
         }
+        return feedMap;
     }
 
     public String getFalconDate(String nominalTime) throws ParseException {

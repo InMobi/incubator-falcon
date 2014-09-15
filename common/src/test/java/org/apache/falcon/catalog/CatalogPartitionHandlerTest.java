@@ -99,7 +99,7 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         hcatServer.stop();
     }
 
-    private String createFeed(boolean clearPartitions) throws Exception {
+    private Feed createFeed(boolean clearPartitions) throws Exception {
         Feed feed = (Feed) storeEntity(EntityType.FEED, "feed" + RandomStringUtils.randomAlphanumeric(10));
         if (clearPartitions) {
             feed.setPartitions(null);
@@ -110,17 +110,23 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
                     "region"), "/projects/falcon/clicks");
         }
         feed.setProperties(getProperties(CatalogPartitionHandler.CATALOG_TABLE,
-            "catalog:default:clicks#ds=${YEAR}-${MONTH}-${DAY}-${HOUR}"));
-        return feed.getName();
+            "catalog:default:clicks#ds={YEAR}-{MONTH}-{DAY}-{HOUR}"));
+        return feed;
+    }
+
+    @Test
+    public void testVoid() throws Exception {
+        Feed feed = createFeed(false);
+        feed.setProperties(null);
     }
 
     @Test
     public void testStaticPartitions() throws Exception {
         String clusterName = embeddedCluster.getCluster().getName();
-        String feedName = createFeed(true);
+        String feedName = createFeed(true).getName();
 
         //no partition if data path doesn't exist
-        partHandler.registerPartitions(clusterName, feedName, DATA_PATH.toString());
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         try {
             HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
             Assert.fail("Expected exception!");
@@ -131,30 +137,36 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         //success case
         FileSystem fs = embeddedCluster.getFileSystem();
         fs.mkdirs(DATA_PATH);
-        partHandler.registerPartitions(clusterName, feedName, DATA_PATH.toString());
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         HCatPartition
             partition = HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
         Thread.sleep(1000);
 
         //re-run scenario
-        partHandler.registerPartitions(clusterName, feedName, DATA_PATH.toString());
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         HCatPartition
             newPartition = HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(newPartition);
         Assert.assertTrue(newPartition.getCreateTime() > partition.getCreateTime());
     }
 
+
+    @Test
+    public void testEviction() throws Exception {
+
+    }
+
     @Test
     public void testDynamicPartitions() throws Exception {
         String clusterName = embeddedCluster.getCluster().getName();
-        String feedName = createFeed(false);
+        String feedName = createFeed(false).getName();
         FileSystem fs = embeddedCluster.getFileSystem();
         fs.mkdirs(DATA_PATH);
 
         //should fail if incompatible dynamic partitions
         try {
-            partHandler.registerPartitions(clusterName, feedName, DATA_PATH.toString());
+            partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
             Assert.fail("Expected exception!");
         } catch (FalconException e) {
             //expected
@@ -163,7 +175,7 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         //success case
         fs.mkdirs(new Path(DATA_PATH, "US/CA"));
         fs.mkdirs(new Path(DATA_PATH, "IND/KA"));
-        partHandler.registerPartitions(clusterName, feedName, DATA_PATH.toString());
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         List<HCatPartition>
             partition = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
@@ -174,7 +186,7 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         //re-run scenario
         fs.delete(DATA_PATH, true);
         fs.mkdirs(new Path(DATA_PATH, "IND/TN"));
-        partHandler.registerPartitions(clusterName, feedName, DATA_PATH.toString());
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         partition = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
         Assert.assertEquals(partition.size(), 1);
