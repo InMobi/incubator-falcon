@@ -52,6 +52,7 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
     private static final int METASTORE_PORT = 49083;
     private static final String CATALOG_DB = "default";
     public static final Path DATA_PATH = new Path("/projects/falcon/clicks/2014/06/18/18");
+    public static final Path DATA2_PATH = new Path("/projects/falcon/clicks2/2014/06/18/18");
     public static final String CATALOG_TABLE = "clicks";
 
     private Thread hcatServer;
@@ -115,12 +116,6 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
     }
 
     @Test
-    public void testVoid() throws Exception {
-        Feed feed = createFeed(false);
-        feed.setProperties(null);
-    }
-
-    @Test
     public void testStaticPartitions() throws Exception {
         String clusterName = embeddedCluster.getCluster().getName();
         String feedName = createFeed(true).getName();
@@ -141,20 +136,39 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         HCatPartition
             partition = HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
-        Thread.sleep(1000);
+        Assert.assertEquals(new Path(partition.getLocation()).toUri().getPath(), DATA_PATH.toString());
 
         //re-run scenario
         partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         HCatPartition
             newPartition = HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(newPartition);
-        Assert.assertTrue(newPartition.getCreateTime() > partition.getCreateTime());
+        //validate that its the same old partition updated
+        Assert.assertEquals(newPartition.getCreateTime(), partition.getCreateTime());
+        Assert.assertEquals(new Path(newPartition.getLocation()).toUri().getPath(), DATA_PATH.toString());
     }
 
 
     @Test
     public void testEviction() throws Exception {
+        String clusterName = embeddedCluster.getCluster().getName();
+        String feedName = createFeed(true).getName();
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), true);
 
+        FileSystem fs = embeddedCluster.getFileSystem();
+        fs.mkdirs(DATA_PATH);
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
+        HCatPartition
+            partition = HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
+        Assert.assertNotNull(partition);
+
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), true);
+        try {
+            HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
+            Assert.fail("expected HCatException");
+        } catch (HCatException expected) {
+            //expected
+        }
     }
 
     @Test
@@ -181,7 +195,11 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         Assert.assertNotNull(partition);
         Assert.assertEquals(partition.size(), 2);
         Assert.assertTrue(partition.get(0).getValues().equals(Arrays.asList("2014-06-18-18", "IND", "KA")));
+        Assert.assertEquals(new Path(partition.get(0).getLocation()).toUri().getPath(), new Path(DATA_PATH,
+            "IND/KA").toString());
         Assert.assertTrue(partition.get(1).getValues().equals(Arrays.asList("2014-06-18-18", "US", "CA")));
+        Assert.assertEquals(new Path(partition.get(1).getLocation()).toUri().getPath(), new Path(DATA_PATH,
+            "US/CA").toString());
 
         //re-run scenario
         fs.delete(DATA_PATH, true);
@@ -191,6 +209,8 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         Assert.assertNotNull(partition);
         Assert.assertEquals(partition.size(), 1);
         Assert.assertTrue(partition.get(0).getValues().equals(Arrays.asList("2014-06-18-18", "IND", "TN")));
+        Assert.assertEquals(new Path(partition.get(0).getLocation()).toUri().getPath(), new Path(DATA_PATH,
+            "IND/TN").toString());
     }
 
     private Properties getProperties(String name, String value) {
