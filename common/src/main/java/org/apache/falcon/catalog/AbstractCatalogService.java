@@ -131,16 +131,4 @@ public abstract class AbstractCatalogService {
      */
     public abstract List<String> getTablePartitionCols(String catalogUrl, String database,
                                                      String tableName) throws FalconException;
-
-    /**
-     * Registers partition in catalog store.
-     * @param catalogUrl url for the catalog service
-     * @param database database the table belongs to
-     * @param tableName table name
-     * @param partSpec list of partition specifications as Key=Value pairs
-     * @param path data path
-     * @throws FalconException
-     */
-    public abstract void registerPartition(String catalogUrl, String database, String tableName,
-        Map<String, String> partSpec, String path) throws FalconException;
 }

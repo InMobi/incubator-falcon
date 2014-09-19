@@ -31,7 +31,7 @@
     </clusters>
 
     <locations>
-        <location type="data" path="/data/out/${YEAR}/${MONTH}/${DAY}/${HOUR}"/>
+        <location type="data" path="/data/out/${YEAR}/${MONTH}/${DAY}/${HOUR}/${MINUTE}"/>
     </locations>
 
     <ACL owner="testuser" group="group" permission="0x644"/>
