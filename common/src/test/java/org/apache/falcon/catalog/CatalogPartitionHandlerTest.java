@@ -194,23 +194,33 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
             partition = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
         Assert.assertEquals(partition.size(), 2);
-        Assert.assertTrue(partition.get(0).getValues().equals(Arrays.asList("2014-06-18-18", "IND", "KA")));
-        Assert.assertEquals(new Path(partition.get(0).getLocation()).toUri().getPath(), new Path(DATA_PATH,
+        HCatPartition part = partition.get(0);
+        Assert.assertTrue(part.getValues().equals(Arrays.asList("2014-06-18-18", "IND", "KA")));
+        Assert.assertEquals(new Path(part.getLocation()).toUri().getPath(), new Path(DATA_PATH,
             "IND/KA").toString());
         Assert.assertTrue(partition.get(1).getValues().equals(Arrays.asList("2014-06-18-18", "US", "CA")));
         Assert.assertEquals(new Path(partition.get(1).getLocation()).toUri().getPath(), new Path(DATA_PATH,
             "US/CA").toString());
 
         //re-run scenario
+        Thread.sleep(1000);
         fs.delete(DATA_PATH, true);
         fs.mkdirs(new Path(DATA_PATH, "IND/TN"));
+        fs.mkdirs(new Path(DATA_PATH, "IND/KA"));
         partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         partition = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
-        Assert.assertEquals(partition.size(), 1);
-        Assert.assertTrue(partition.get(0).getValues().equals(Arrays.asList("2014-06-18-18", "IND", "TN")));
-        Assert.assertEquals(new Path(partition.get(0).getLocation()).toUri().getPath(), new Path(DATA_PATH,
-            "IND/TN").toString());
+        Assert.assertEquals(partition.size(), 2);
+        HCatPartition newPart = partition.get(0);
+        Assert.assertEquals(newPart.getValues(), Arrays.asList("2014-06-18-18", "IND", "KA"));
+        Assert.assertEquals(new Path(newPart.getLocation()).toUri().getPath(),
+            new Path(DATA_PATH, "IND/KA").toString());
+        Assert.assertEquals(newPart.getCreateTime(), part.getCreateTime());
+        Assert.assertTrue(newPart.getLastAccessTime() > part.getLastAccessTime());
+        Assert.assertEquals(partition.get(1).getValues(), Arrays.asList("2014-06-18-18", "IND", "TN"));
+        Assert.assertEquals(new Path(partition.get(1).getLocation()).toUri().getPath(),
+            new Path(DATA_PATH, "IND/TN").toString());
+
     }
 
     private Properties getProperties(String name, String value) {

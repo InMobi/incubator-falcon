@@ -193,6 +193,7 @@ public final class CatalogPartitionHandler {
                     part.getSd().setLocation(location);
                     LOG.info("Updating partition {} for {}.{} with location {}", part.getValues(),
                         storage.getDatabase(), storage.getTable(), location);
+                    part.setLastAccessTime((int) (System.currentTimeMillis()/1000));
                     client.alter_partition(storage.getDatabase(), storage.getTable(), part);
                 } else {
                     //drop partition
