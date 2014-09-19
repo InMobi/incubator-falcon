@@ -73,6 +73,11 @@ public abstract class AbstractRerunConsumer<T extends RerunEvent, M extends Abst
 
             } catch (Throwable e) {
                 LOG.error("Error in rerun consumer", e);
+                try {
+                    handler.reconnect();
+                } catch (FalconException fe) {
+                    LOG.error("Error in rerun consumer", fe);
+                }
             }
         }
     }
