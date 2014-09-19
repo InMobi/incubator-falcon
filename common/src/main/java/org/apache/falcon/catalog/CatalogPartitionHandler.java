@@ -69,6 +69,8 @@ public final class CatalogPartitionHandler {
     public static final ConfigurationStore STORE = ConfigurationStore.get();
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     public static final String CATALOG_TABLE = "catalog.table";
+    public static final String UPDATE_TIME = "UPDATE_TIME";
+    public static final String CREATE_TIME = "CREATE_TIME";
 
     private AbstractCatalogService service;
     private ExpressionHelper evaluator = ExpressionHelper.get();
@@ -190,11 +192,7 @@ public final class CatalogPartitionHandler {
                 if (finalPartsValues.contains(part.getValues())) {
                     //update partition
                     String location = finalPartsMap.get(part.getValues());
-                    part.getSd().setLocation(location);
-                    LOG.info("Updating partition {} for {}.{} with location {}", part.getValues(),
-                        storage.getDatabase(), storage.getTable(), location);
-                    part.setLastAccessTime((int) (System.currentTimeMillis()/1000));
-                    client.alter_partition(storage.getDatabase(), storage.getTable(), part);
+                    updatePartition(storage, part, location);
                 } else {
                     //drop partition
                     dropPartition(storage, part.getValues());
@@ -218,6 +216,24 @@ public final class CatalogPartitionHandler {
         }
     }
 
+    private void updatePartition(CatalogStorage storage, org.apache.hadoop.hive.metastore.api.Partition part,
+        String location) throws FalconException {
+        part.getSd().setLocation(location);
+        part.setLastAccessTime((int) (System.currentTimeMillis() / 1000));
+        if (part.getParameters() == null) {
+            part.setParameters(new HashMap<String, String>());
+        }
+        part.getParameters().put(UPDATE_TIME, String.valueOf(System.currentTimeMillis()));
+        LOG.info("Updating partition {} for {}.{} with location {}", part.getValues(), storage.getDatabase(),
+            storage.getTable(), location);
+        HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
+        try {
+            client.alter_partition(storage.getDatabase(), storage.getTable(), part);
+        } catch (TException e) {
+            throw new FalconException(e);
+        }
+    }
+
     private Table addPartition(CatalogStorage storage, Table table, List<String> values,
         String location) throws FalconException {
         HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
@@ -231,6 +247,11 @@ public final class CatalogPartitionHandler {
             part.setValues(values);
             part.setSd(table.getSd());
             part.getSd().setLocation(location);
+            part.setParameters(table.getParameters());
+            if (part.getParameters() == null) {
+                part.setParameters(new HashMap<String, String>());
+            }
+            part.getParameters().put(CREATE_TIME, String.valueOf(System.currentTimeMillis()));
             LOG.info("Adding partition {} to {}.{} with location {}", values, storage.getDatabase(), storage.getTable(),
                 location);
             client.add_partition(part);
