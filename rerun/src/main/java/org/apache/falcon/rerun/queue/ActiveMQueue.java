@@ -23,7 +23,6 @@ import org.apache.activemq.ScheduledMessage;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.rerun.event.RerunEvent;
 import org.apache.falcon.rerun.event.RerunEventFactory;
-import org.apache.falcon.util.RuntimeProperties;
 import org.apache.falcon.util.StartupProperties;
 
 import javax.jms.*;
