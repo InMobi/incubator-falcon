@@ -26,7 +26,13 @@ import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
-import javax.jms.*;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.MapMessage;
+import javax.jms.MessageConsumer;
+import javax.jms.Session;
 
 /**
  * Test for process message producer.
@@ -118,18 +124,9 @@ public class ProcessProducerTest {
         System.out.println("Consumed: " + m.toString());
         assertMessage(m);
         Assert.assertEquals(m.getString(ARG.feedNames.getArgName()),
-                "click-logs");
+                "click-logs,raw-logs");
         Assert.assertEquals(m.getString(ARG.feedInstancePaths.getArgName()),
-                "/click-logs/10/05/05/00/20");
-
-        for (m = null; m == null;) {
-            m = (MapMessage) consumer.receive();
-        }
-        System.out.println("Consumed: " + m.toString());
-        assertMessage(m);
-        Assert.assertEquals(m.getString(ARG.feedNames.getArgName()), "raw-logs");
-        Assert.assertEquals(m.getString(ARG.feedInstancePaths.getArgName()),
-                "/raw-logs/10/05/05/00/20");
+                "/click-logs/10/05/05/00/20,/raw-logs/10/05/05/00/20");
         connection.close();
     }
 

@@ -18,7 +18,11 @@
 
 package org.apache.falcon.messaging;
 
-import org.apache.commons.cli.*;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.falcon.messaging.EntityInstanceMessage.ARG;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.util.Tool;
@@ -26,8 +30,14 @@ import org.apache.hadoop.util.ToolRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.jms.*;
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.DeliveryMode;
+import javax.jms.JMSException;
+import javax.jms.Session;
+import javax.jms.Topic;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 /**
  * Message producer used in the workflow to send a message to the queue/topic.
@@ -148,9 +158,9 @@ public class MessageProducer extends Configured implements Tool {
         } catch (ParseException e) {
             throw new Exception("Unable to parse arguments: ", e);
         }
-        EntityInstanceMessage[] entityInstanceMessage = EntityInstanceMessage
+        List<EntityInstanceMessage> entityInstanceMessage = EntityInstanceMessage
                 .getMessages(cmd);
-        if (entityInstanceMessage == null || entityInstanceMessage.length == 0) {
+        if (entityInstanceMessage == null || entityInstanceMessage.isEmpty()) {
             LOG.warn("No operation on output feed");
             return 0;
         }
@@ -162,10 +172,6 @@ public class MessageProducer extends Configured implements Tool {
                 LOG.info("Sending message: {}", message.getKeyValueMap());
                 sendMessage(message);
             }
-        } catch (JMSException e) {
-            LOG.error("Error in getConnection", e);
-        } catch (Exception e) {
-            LOG.error("Error in getConnection", e);
         } finally {
             try {
                 if (connection != null) {

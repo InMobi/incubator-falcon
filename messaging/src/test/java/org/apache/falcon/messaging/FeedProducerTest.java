@@ -18,17 +18,6 @@
 
 package org.apache.falcon.messaging;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.MapMessage;
-import javax.jms.MessageConsumer;
-import javax.jms.Session;
-
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;
 import org.apache.activemq.util.ByteArrayInputStream;
@@ -42,6 +31,16 @@ import org.testng.Assert;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
+
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.MapMessage;
+import javax.jms.MessageConsumer;
+import javax.jms.Session;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * Test for feed message producer.
@@ -166,32 +165,8 @@ public class FeedProducerTest {
         System.out.println("Consumed: " + m.toString());
         assertMessage(m);
         Assert.assertEquals(m.getString(ARG.feedInstancePaths.getArgName()),
-                "/falcon/feed/agg-logs/path1/2010/10/10/20");
-
-        for (m = null; m == null;) {
-            m = (MapMessage) consumer.receive();
-        }
-        System.out.println("Consumed: " + m.toString());
-        assertMessage(m);
-        Assert.assertEquals(m.getString(ARG.feedInstancePaths.getArgName()),
-                "/falcon/feed/agg-logs/path1/2010/10/10/21");
-
-        for (m = null; m == null;) {
-            m = (MapMessage) consumer.receive();
-        }
-        System.out.println("Consumed: " + m.toString());
-        assertMessage(m);
-        Assert.assertEquals(m.getString(ARG.feedInstancePaths.getArgName()),
-                "/falcon/feed/agg-logs/path1/2010/10/10/22");
-
-        for (m = null; m == null;) {
-            m = (MapMessage) consumer.receive();
-        }
-        System.out.println("Consumed: " + m.toString());
-        assertMessage(m);
-        Assert.assertEquals(m.getString(ARG.feedInstancePaths.getArgName()),
-                "/falcon/feed/agg-logs/path1/2010/10/10/23");
-
+                "/falcon/feed/agg-logs/path1/2010/10/10/20,/falcon/feed/agg-logs/path1/2010/10/10/21"
+                    + ",/falcon/feed/agg-logs/path1/2010/10/10/22,/falcon/feed/agg-logs/path1/2010/10/10/23");
         connection.close();
     }
 
