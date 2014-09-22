@@ -19,12 +19,16 @@ package org.apache.falcon.workflow;
 
 import org.apache.commons.cli.*;
 import org.apache.commons.lang.StringUtils;
+import org.apache.falcon.FalconException;
 import org.apache.falcon.logging.LogMover;
+import org.apache.falcon.messaging.EntityInstanceMessage.ARG;
 import org.apache.falcon.messaging.MessageProducer;
 import org.apache.falcon.metadata.LineageArgs;
 import org.apache.falcon.metadata.LineageRecorder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
@@ -117,6 +121,12 @@ public class FalconPostProcessing extends Configured implements Tool {
         LOG.info("Sending falcon message {}", cmd);
         invokeFalconMessageProducer(cmd);
 
+        //delete the instancePaths file
+        Path logFile = new Path(cmd.getOptionValue(ARG.logFile.getArgName()));
+        FileSystem fs = logFile.getFileSystem(new Configuration());
+        if (fs.exists(logFile) && !fs.delete(logFile, true)) {
+            throw new FalconException("failed to delete " + logFile);
+        }
         return 0;
     }
 

@@ -40,6 +40,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hcatalog.common.HCatUtil;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +50,10 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -64,6 +69,8 @@ public final class CatalogPartitionHandler {
     public static final ConfigurationStore STORE = ConfigurationStore.get();
     private static final TimeZone UTC = TimeZone.getTimeZone("UTC");
     public static final String CATALOG_TABLE = "catalog.table";
+    public static final String UPDATE_TIME = "UPDATE_TIME";
+    public static final String CREATE_TIME = "CREATE_TIME";
 
     private AbstractCatalogService service;
     private ExpressionHelper evaluator = ExpressionHelper.get();
@@ -80,98 +87,197 @@ public final class CatalogPartitionHandler {
         return INSTANCE;
     }
 
-    public void registerPartitions(String clusterName, String feedName, String pathStr) throws FalconException {
+    public void handlePartition(String clusterName, String feedName, String pathStr, boolean deleteOperation)
+        throws FalconException {
         Feed feed = STORE.get(EntityType.FEED, feedName);
         Cluster cluster = STORE.get(EntityType.CLUSTER, clusterName);
-        Path path = new Path(pathStr);
-
-        //get date from fs path
-        Date date = getDate(feed, clusterName, pathStr);
+        //Take only the path part without url
+        Path path = new Path(new Path(pathStr).toUri().getPath());
 
         CatalogStorage storage = getStorage(feed, cluster);
+        if (storage == null) {
+            //no table defined for the feed
+            return;
+        }
 
-        //static partitions
+        LOG.info("Handle partition for feed {} for path {} - drop?{}", feedName, pathStr, deleteOperation);
+        //get date from fs path
+        Date date = getDate(feed, clusterName, path.toString());
+
         Map<String, String> staticPartitions = storage.getPartitions();
         ExpressionHelper.setReferenceDate(date, UTC);
         for (Entry<String, String> entry : staticPartitions.entrySet()) {
             staticPartitions.put(entry.getKey(), evaluator.evaluateFullExpression(entry.getValue(), String.class));
         }
 
-        dropPartitions(storage.getCatalogUrl(), storage.getDatabase(), storage.getTable(), staticPartitions);
-        FileSystem fs =
-            HadoopClientFactory.get().createFileSystem(path.toUri(), ClusterHelper.getConfiguration(cluster));
-        try {
-            if (!fs.exists(path)) {
-                LOG.info("Not registering partition for " + feedName + " as " + pathStr + " doesn't exist");
-                return;
-            }
-        } catch (IOException e) {
-            throw new FalconException(e);
-        }
+        if (deleteOperation) {
+            dropPartition(storage, staticPartitions.values());
+            return;
 
-        //dynamic partitions
-        if (feed.getPartitions() != null) {
-            List<Partition> feedParts = feed.getPartitions().getPartitions();
+        } else {
+            //generate operation
+            FileSystem fs =
+                HadoopClientFactory.get().createFileSystem(path.toUri(), ClusterHelper.getConfiguration(cluster));
             try {
-                FileStatus[] files = fs.globStatus(new Path(path, StringUtils.repeat("*", "/", feedParts.size())));
-                if (files == null) {
-                    throw new FalconException("Output path " + path + " doesn't exist!");
-                }
-                if (files.length == 0) {
-                    throw new FalconException("Partition mismatch for feed " + feedName + " for data path " + pathStr);
-                }
-                for (FileStatus file : files) {
-                    Map<String, String> partitions = new HashMap<String, String>();
-                    partitions.putAll(staticPartitions);
-                    String[] dynParts = StringUtils.stripStart(file.getPath().toUri().getPath(), pathStr).split("/");
-                    if (!file.isDir() || dynParts.length != feedParts.size()) {
-                        throw new FalconException("Partition mismatch for feed " + feedName + " for data path "
-                            + file.getPath());
-                    }
-
-                    for (int index = 0; index < dynParts.length; index++) {
-                        partitions.put(feedParts.get(index).getName(), dynParts[index]);
-                    }
-                    service.registerPartition(storage.getCatalogUrl(), storage.getDatabase(), storage.getTable(),
-                        partitions, file.getPath().toString());
+                if (!fs.exists(path)) {
+                    LOG.info("No-op for feed {} as {} doesn't exist", feedName, pathStr);
+                    dropPartition(storage, staticPartitions.values());
+                    return;
                 }
             } catch (IOException e) {
                 throw new FalconException(e);
             }
-        } else {
-            service.registerPartition(storage.getCatalogUrl(), storage.getDatabase(), storage.getTable(),
-                staticPartitions, pathStr);
-        }
 
+            Map<List<String>, String> finalPartitions = new HashMap<List<String>, String>();
+            if (feed.getPartitions() != null) {
+                //dynamic partitions
+                List<Partition> feedParts = feed.getPartitions().getPartitions();
+                try {
+                    FileStatus[] files = fs.globStatus(new Path(path, StringUtils.repeat("*", "/", feedParts.size())));
+                    if (files == null) {
+                        throw new FalconException("Output path " + path + " doesn't exist!");
+                    }
+                    if (files.length == 0) {
+                        throw new FalconException("Partition mismatch for feed " + feedName + " for data path " + path);
+                    }
+                    for (FileStatus file : files) {
+                        Map<String, String> partitions = new LinkedHashMap<String, String>();
+                        partitions.putAll(staticPartitions);
+                        String[] dynParts =
+                            StringUtils.stripStart(file.getPath().toUri().getPath(), path.toString()).split("/");
+                        if (!file.isDir() || dynParts.length != feedParts.size()) {
+                            throw new FalconException("Partition mismatch for feed " + feedName + " for data path "
+                                + file.getPath());
+                        }
+
+                        for (int index = 0; index < dynParts.length; index++) {
+                            partitions.put(feedParts.get(index).getName(), dynParts[index]);
+                        }
+                        finalPartitions.put(new ArrayList<String>(partitions.values()), file.getPath().toString());
+                    }
+                } catch (IOException e) {
+                    throw new FalconException(e);
+                }
+            } else {
+                //only static partitions
+                finalPartitions.put(new ArrayList<String>(staticPartitions.values()), pathStr);
+            }
+            registerPartitions(storage, new ArrayList<String>(staticPartitions.values()), finalPartitions);
+        }
+    }
+
+    private void dropPartition(CatalogStorage storage, Collection<String> values) throws FalconException {
+        HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
+        try {
+            LOG.info("Dropping partition {} for table {}.{}", values, storage.getDatabase(), storage.getTable());
+            client.dropPartition(storage.getDatabase(), storage.getTable(), new ArrayList<String>(values), false);
+        } catch (NoSuchObjectException ignore) {
+            //ignore
+        } catch (TException e) {
+            throw new FalconException(e);
+        }
+    }
+
+    private void registerPartitions(CatalogStorage storage, List<String> staticPartition,
+        Map<List<String>, String> finalPartsMap) throws FalconException {
+        try {
+            HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
+            List<org.apache.hadoop.hive.metastore.api.Partition> existParts =
+                client.listPartitions(storage.getDatabase(), storage.getTable(), staticPartition, (short) -1);
+            List<List<String>> existPartValues = new ArrayList<List<String>>();
+
+            Collection<List<String>> finalPartsValues = finalPartsMap.keySet();
+            Table table = null;
+            for (org.apache.hadoop.hive.metastore.api.Partition part : existParts) {
+                if (finalPartsValues.contains(part.getValues())) {
+                    //update partition
+                    String location = finalPartsMap.get(part.getValues());
+                    updatePartition(storage, part, location);
+                } else {
+                    //drop partition
+                    dropPartition(storage, part.getValues());
+                }
+                existPartValues.add(part.getValues());
+            }
+
+            for (Entry<List<String>, String> entry : finalPartsMap.entrySet()) {
+                if (!existPartValues.contains(entry.getKey())) {
+                    //Add partition
+                    table = addPartition(storage, table, entry.getKey(), entry.getValue());
+                }
+            }
+
+        } catch (MetaException e) {
+            throw new FalconException(e);
+        } catch (NoSuchObjectException e) {
+            throw new FalconException(e);
+        } catch (TException e) {
+            throw new FalconException(e);
+        }
+    }
+
+    private void updatePartition(CatalogStorage storage, org.apache.hadoop.hive.metastore.api.Partition part,
+        String location) throws FalconException {
+        part.getSd().setLocation(location);
+        part.setLastAccessTime((int) (System.currentTimeMillis() / 1000));
+        if (part.getParameters() == null) {
+            part.setParameters(new HashMap<String, String>());
+        }
+        part.getParameters().put(UPDATE_TIME, String.valueOf(System.currentTimeMillis()));
+        LOG.info("Updating partition {} for {}.{} with location {}", part.getValues(), storage.getDatabase(),
+            storage.getTable(), location);
+        HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
+        try {
+            client.alter_partition(storage.getDatabase(), storage.getTable(), part);
+        } catch (TException e) {
+            throw new FalconException(e);
+        }
+    }
+
+    private Table addPartition(CatalogStorage storage, Table table, List<String> values,
+        String location) throws FalconException {
+        HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
+        try {
+            if (table == null) {
+                table = client.getTable(storage.getDatabase(), storage.getTable());
+            }
+            org.apache.hadoop.hive.metastore.api.Partition part = new org.apache.hadoop.hive.metastore.api.Partition();
+            part.setDbName(storage.getDatabase());
+            part.setTableName(storage.getTable());
+            part.setValues(values);
+            part.setSd(table.getSd());
+            part.getSd().setLocation(location);
+            part.setParameters(table.getParameters());
+            if (part.getParameters() == null) {
+                part.setParameters(new HashMap<String, String>());
+            }
+            part.getParameters().put(CREATE_TIME, String.valueOf(System.currentTimeMillis()));
+            LOG.info("Adding partition {} to {}.{} with location {}", values, storage.getDatabase(), storage.getTable(),
+                location);
+            client.add_partition(part);
+        } catch (TException e) {
+            throw new FalconException(e);
+        }
+        return table;
     }
 
     private HiveMetaStoreClient getMetastoreClient(String catalogUrl) throws FalconException {
         HiveConf hiveConf = HiveCatalogService.createHiveConf(catalogUrl);
         try {
-            return new HiveMetaStoreClient(hiveConf);
+            return HCatUtil.getHiveClient(hiveConf);
         } catch (MetaException e) {
             throw new FalconException(e);
-        }
-    }
-
-    //Use metastore client as hcat client deletes even the path for the partition
-    private void dropPartitions(String catalogUrl, String database, String table, Map<String, String> partSpec)
-        throws FalconException {
-        List<CatalogPartition> partitions = service.listPartitionsByFilter(catalogUrl, database, table, partSpec);
-        if (!partitions.isEmpty()) {
-            HiveMetaStoreClient client = getMetastoreClient(catalogUrl);
-            for (CatalogPartition partition : partitions) {
-                try {
-                    client.dropPartition(database, table, new ArrayList<String>(partition.getValues()), false);
-                } catch (TException e) {
-                    throw new FalconException(e);
-                }
-            }
+        } catch (IOException e) {
+            throw new FalconException(e);
         }
     }
 
     private CatalogStorage getStorage(Feed feed, Cluster cluster) throws FalconException {
         String tableUri = getTableUri(feed);
+        if (tableUri == null) {
+            return null;
+        }
+
         CatalogTable table = new CatalogTable();
         table.setUri(tableUri);
         try {
@@ -211,7 +317,7 @@ public final class CatalogPartitionHandler {
             List<Property> props = feed.getProperties().getProperties();
             for (Property prop : props) {
                 if (prop.getName().equals(CATALOG_TABLE)) {
-                    return prop.getValue();
+                    return prop.getValue().replace("{", "${");
                 }
             }
         }

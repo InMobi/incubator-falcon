@@ -25,6 +25,7 @@ import org.apache.falcon.entity.EntityUtil;
 import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.SchemaHelper;
 import org.apache.falcon.messaging.EntityInstanceMessage.ARG;
+import org.apache.falcon.messaging.EntityInstanceMessage.EntityOps;
 import org.apache.falcon.metadata.MetadataMappingService;
 import org.apache.falcon.rerun.event.RerunEvent.RerunType;
 import org.apache.falcon.rerun.handler.AbstractRerunHandler;
@@ -160,8 +161,13 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
                 String[] outFeeds = mapMessage.getString(Arg.FEED_NAMES.getOptionName()).split(",");
                 String[] outPaths = mapMessage.getString(Arg.FEED_INSTANCE_PATHS.getOptionName()).split(",");
                 String clusterName = mapMessage.getString(Arg.CLUSTER.getOptionName());
-                for (int i = 0; i < outFeeds.length; i++) {
-                    handler.registerPartitions(clusterName, outFeeds[i], outPaths[i]);
+                boolean delete = mapMessage.getString(Arg.OPERATION.getOptionName()).equals(EntityOps.DELETE.name());
+                for (int index = 0; index < outFeeds.length; index++) {
+                    try {
+                        handler.handlePartition(clusterName, outFeeds[index], outPaths[index], delete);
+                    } catch (Throwable e) {
+                        LOG.info("Failed to register partition for " + outFeeds[index] + " " + outPaths[index]);
+                    }
                 }
             } catch (JMSException e) {
                 throw new FalconException(e);
