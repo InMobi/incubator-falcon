@@ -84,9 +84,9 @@ public class RetryHandler<M extends DelayedQueue<RetryEvent>> extends
     public void init(M aDelayQueue) throws FalconException {
         super.init(aDelayQueue);
         Thread daemon = new Thread(new RetryConsumer(this));
-        daemon.setName("RetryHandler");
+        daemon.setName("RetryConsumer");
         daemon.setDaemon(true);
         daemon.start();
-        LOG.info("RetryHandler thread started.");
+        LOG.info("RetryConsumer thread started.");
     }
 }
