@@ -141,9 +141,9 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
                     entityName, nominalTime, workflowId, workflowUser, runId, operation,
                     SchemaHelper.formatDateUTC(startTime), duration);
 
-                notifyMetadataMappingService(entityName, operation, mapMessage.getString(ARG.logDir.getArgName()));
-
                 registerHCatPartitions(mapMessage);
+
+                notifyMetadataMappingService(entityName, operation, mapMessage.getString(ARG.logDir.getArgName()));
             }
         } catch (JMSException e) {
             LOG.info("Error in onMessage for subscriber of topic: {}", this, e);
