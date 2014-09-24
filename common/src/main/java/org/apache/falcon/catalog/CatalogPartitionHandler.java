@@ -133,7 +133,8 @@ public final class CatalogPartitionHandler {
                 //dynamic partitions
                 List<Partition> feedParts = feed.getPartitions().getPartitions();
                 try {
-                    FileStatus[] files = fs.globStatus(new Path(path, repeat("*", "/", feedParts.size())));
+                    FileStatus[] files = fs.globStatus(
+                        new Path(path, org.apache.falcon.util.StringUtils.repeat("*", "/", feedParts.size())));
                     if (files == null) {
                         throw new FalconException("Output path " + path + " doesn't exist!");
                     }
@@ -164,14 +165,6 @@ public final class CatalogPartitionHandler {
             }
             registerPartitions(storage, new ArrayList<String>(staticPartitions.values()), finalPartitions);
         }
-    }
-
-    private String repeat(String repeatStr, String delim, int cnt) {
-        String[] array = new String[cnt];
-        for (int index = 0; index < cnt; index++) {
-            array[index] = repeatStr;
-        }
-        return StringUtils.join(array, delim);
     }
 
     private void dropPartition(CatalogStorage storage, Collection<String> values) throws FalconException {
