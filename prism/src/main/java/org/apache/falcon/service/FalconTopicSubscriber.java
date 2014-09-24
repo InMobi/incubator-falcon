@@ -166,7 +166,8 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
                     try {
                         handler.handlePartition(clusterName, outFeeds[index], outPaths[index], delete);
                     } catch (Throwable e) {
-                        LOG.info("Failed to register partition for " + outFeeds[index] + " " + outPaths[index]);
+                        LOG.info("Failed to register partition for feed {} with path {}", outFeeds[index],
+                            outPaths[index], e);
                     }
                 }
             } catch (JMSException e) {
