@@ -18,7 +18,12 @@
 
 package org.apache.falcon.util;
 
-public class StringUtils {
+/**
+ * Custom String Utils.
+ */
+public final class StringUtils {
+
+    private StringUtils() { }
 
     //Hadoop2.4.0 has commons-lang2.5 which doesn't contain repeat(). Hence using custom repeat()
     public static String repeat(String repeatStr, String delim, int cnt) {
