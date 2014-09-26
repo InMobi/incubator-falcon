@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -140,9 +139,6 @@ public final class CatalogPartitionHandler {
                         throw new FalconException("Partition mismatch for feed " + feedName + " for data path "
                             + path);
                     }
-                    for (FileStatus file : files) {
-                        LOG.info(file.getPath().toString());
-                    }
 
                     for (FileStatus file : files) {
                         List<String> partitionValue = new ArrayList<String>(staticPartitions.values());
@@ -151,11 +147,9 @@ public final class CatalogPartitionHandler {
                             throw new FalconException("Partition mismatch for feed " + feedName + " for data path "
                                 + file.getPath());
                         }
-                        LOG.info("Dynamic parts: " + Arrays.toString(dynParts));
                         for (int index = 0; index < dynParts.length; index++) {
                             partitionValue.add(dynParts[index]);
                         }
-                        LOG.info(partitionValue.toString());
                         finalPartitions.put(partitionValue, file.getPath().toString());
                     }
                 } catch (IOException e) {
