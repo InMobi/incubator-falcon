@@ -20,14 +20,19 @@ package org.apache.falcon.entity;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.falcon.FalconException;
+import org.apache.falcon.entity.FeedInstanceStatus.AvailabilityStatus;
 import org.apache.falcon.entity.common.FeedDataPath;
+import org.apache.falcon.entity.v0.SchemaHelper;
+import org.apache.falcon.entity.v0.cluster.Cluster;
 import org.apache.falcon.entity.v0.feed.Feed;
 import org.apache.falcon.entity.v0.feed.Location;
 import org.apache.falcon.entity.v0.feed.LocationType;
 import org.apache.falcon.entity.v0.feed.Locations;
+import org.apache.falcon.expression.ExpressionHelper;
 import org.apache.falcon.hadoop.HadoopClientFactory;
 import org.apache.falcon.security.CurrentUser;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.ContentSummary;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -38,7 +43,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.regex.Matcher;
 
 /**
@@ -260,6 +267,64 @@ public class FileSystemStorage implements Storage {
             LOG.error("Can't validate ACL on storage {}", getStorageUrl(), e);
             throw new RuntimeException("Can't validate storage ACL (URI " + getStorageUrl() + ")", e);
         }
+    }
+
+    @Override
+    public List<FeedInstanceStatus> getListing(Feed feed, String clusterName, LocationType locationType,
+                                               TimeZone timeZone, Date start, Date end) throws FalconException {
+
+        List<Location> clusterSpecificLocation = FeedHelper.
+                getLocations(FeedHelper.getCluster(feed, clusterName), feed);
+        Location location = getLocation(clusterSpecificLocation, locationType);
+        try {
+            FileSystem fileSystem = HadoopClientFactory.get().createProxiedFileSystem(getConf());
+            Cluster cluster = ClusterHelper.getCluster(clusterName);
+            String clusterPath = FeedHelper.evaluateClusterExp(cluster, location.getPath());
+            List<FeedInstanceStatus> instances = new ArrayList<FeedInstanceStatus>();
+            while (end.after(start)) {
+                ExpressionHelper.setReferenceDate(start, timeZone);
+                String feedInstancePath = ExpressionHelper.get().evaluate(clusterPath, String.class);
+                FileStatus fileStatus = getFileStatus(fileSystem, new Path(feedInstancePath));
+                FeedInstanceStatus instance = new FeedInstanceStatus(feedInstancePath);
+                if (fileStatus != null) {
+                    instance.setCreationTime(fileStatus.getModificationTime());
+                    instance.setInstance(SchemaHelper.formatDateUTC(start));
+                    ContentSummary contentSummary = fileSystem.getContentSummary(fileStatus.getPath());
+                    if (contentSummary != null) {
+                        long size = contentSummary.getSpaceConsumed();
+                        instance.setSize(size);
+                        if (!StringUtils.isEmpty(feed.getAvailabilityFlag())) {
+                            FileStatus doneFile = getFileStatus(fileSystem,
+                                    new Path(fileStatus.getPath(), feed.getAvailabilityFlag()));
+                            if (doneFile != null) {
+                                instance.setStatus(AvailabilityStatus.AVAILABLE);
+                            } else {
+                                instance.setStatus(AvailabilityStatus.PARTIAL);
+                            }
+                        } else {
+                            instance.setStatus(size > 0 ? AvailabilityStatus.AVAILABLE : AvailabilityStatus.EMPTY);
+                        }
+                    }
+                }
+                instances.add(instance);
+                start = new Date(start.getTime()
+                        + ExpressionHelper.get().evaluate(feed.getFrequency().getFrequency(), Long.class));
+            }
+            return instances;
+        } catch (IOException e) {
+            LOG.error("Unable to retrieve listing for {}:{}", locationType, getStorageUrl(), e);
+            throw new FalconException("Unable to retrieve listing for (URI " + getStorageUrl() + ")", e);
+        }
+    }
+
+    public FileStatus getFileStatus(FileSystem fileSystem, Path feedInstancePath) {
+        FileStatus fileStatus = null;
+        try {
+            fileStatus = fileSystem.getFileStatus(feedInstancePath);
+        } catch (IOException ignore) {
+            //ignore
+        }
+        return fileStatus;
     }
 
     private Configuration getConf() {

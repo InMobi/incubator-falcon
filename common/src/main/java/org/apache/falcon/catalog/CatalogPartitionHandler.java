@@ -112,8 +112,6 @@ public final class CatalogPartitionHandler {
 
         if (deleteOperation) {
             dropPartition(storage, staticPartitions.values());
-            return;
-
         } else {
             //generate operation
             FileSystem fs =

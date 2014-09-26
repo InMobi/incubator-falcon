@@ -19,7 +19,12 @@
 package org.apache.falcon.entity;
 
 import org.apache.falcon.FalconException;
+import org.apache.falcon.entity.v0.feed.Feed;
 import org.apache.falcon.entity.v0.feed.LocationType;
+
+import java.util.Date;
+import java.util.List;
+import java.util.TimeZone;
 
 /**
  * A class to encapsulate the storage for a given feed which can either be
@@ -82,4 +87,10 @@ public interface Storage {
      * @throws FalconException if the permissions are not valid.
      */
     void validateACL(String owner, String group, String permissions) throws FalconException;
+
+    /**
+     *
+     */
+    List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType, TimeZone timeZone,
+                                        Date start, Date end) throws FalconException;
 }

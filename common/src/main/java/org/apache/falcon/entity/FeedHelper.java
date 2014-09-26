@@ -23,14 +23,18 @@ import org.apache.falcon.FalconException;
 import org.apache.falcon.Tag;
 import org.apache.falcon.entity.common.FeedDataPath;
 import org.apache.falcon.entity.common.FeedDataPath.VARS;
+import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.EntityType;
 import org.apache.falcon.entity.v0.cluster.Property;
 import org.apache.falcon.entity.v0.feed.CatalogTable;
 import org.apache.falcon.entity.v0.feed.Cluster;
 import org.apache.falcon.entity.v0.feed.Feed;
 import org.apache.falcon.entity.v0.feed.Location;
+import org.apache.falcon.entity.v0.feed.LocationType;
 import org.apache.falcon.entity.v0.feed.Locations;
 import org.apache.falcon.expression.ExpressionHelper;
+import org.apache.falcon.resource.APIResult;
+import org.apache.falcon.resource.FeedInstanceResult;
 import org.apache.falcon.util.BuildProperties;
 import org.apache.hadoop.fs.Path;
 import org.slf4j.Logger;
@@ -47,6 +51,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
@@ -385,5 +390,30 @@ public final class FeedHelper {
             start = matcher.start() + 1;
         }
         return map;
+    }
+
+    public static FeedInstanceResult getFeedInstanceListing(Entity entityObject,
+                                                            Date start, Date end) throws FalconException {
+        Set<String> clusters = EntityUtil.getClustersDefinedInColos(entityObject);
+        FeedInstanceResult result = new FeedInstanceResult(APIResult.Status.SUCCEEDED, "Success");
+        for (String cluster : clusters) {
+            Feed feed = (Feed) entityObject;
+            Storage storage = createStorage(cluster, feed);
+            List<FeedInstanceStatus> feedListing = storage.
+                    getListing(feed, cluster, LocationType.DATA, feed.getTimezone(), start, end);
+            FeedInstanceResult.Instance[] instances = new FeedInstanceResult.Instance[feedListing.size()];
+            int index = 0;
+            for (FeedInstanceStatus feedStatus : feedListing) {
+                FeedInstanceResult.Instance instance = new
+                        FeedInstanceResult.Instance(cluster, feedStatus.getInstance(),
+                        feedStatus.getStatus().name());
+                instance.creationTime = feedStatus.getCreationTime();
+                instance.uri = feedStatus.getUri();
+                instance.size = feedStatus.getSize();
+                instances[index++] = instance;
+            }
+            result.setInstances(instances);
+        }
+        return result;
     }
 }

@@ -50,7 +50,6 @@ public class FeedInstanceResult extends APIResult {
         super(status, message);
     }
 
-
     public Instance[] getInstances() {
         return instances;
     }
@@ -74,10 +73,13 @@ public class FeedInstanceResult extends APIResult {
         public String status;
 
         @XmlElement
-        public String location;
+        public String uri;
 
         @XmlElement
-        public String details;
+        public long creationTime;
+
+        @XmlElement
+        public Long size;
 
         public Instance() {
         }
@@ -96,16 +98,20 @@ public class FeedInstanceResult extends APIResult {
             return status;
         }
 
-        public String getLocation() {
-            return location;
+        public String getUri() {
+            return uri;
         }
 
         public String getCluster() {
             return cluster;
         }
 
-        public String getDetails() {
-            return details;
+        public long getCreationTime() {
+            return creationTime;
+        }
+
+        public Long getSize() {
+            return size;
         }
 
         @Override
@@ -114,9 +120,8 @@ public class FeedInstanceResult extends APIResult {
                     + this.instance
                     + ", status:"
                     + this.status
-                    + (this.location == null ? "" : ", " + this.location)
-                    + (this.cluster == null ? "" : ", cluster:"
-                    + this.cluster) + "}";
+                    + (this.uri == null ? "" : ", uri: " + this.uri)
+                    + (this.cluster == null ? "" : ", cluster:" + this.cluster) + "}";
         }
     }
 }

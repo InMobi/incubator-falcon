@@ -19,8 +19,12 @@
 package org.apache.falcon.resource;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.falcon.*;
+import org.apache.falcon.FalconException;
+import org.apache.falcon.FalconWebException;
+import org.apache.falcon.LifeCycle;
+import org.apache.falcon.Pair;
 import org.apache.falcon.entity.EntityUtil;
+import org.apache.falcon.entity.FeedHelper;
 import org.apache.falcon.entity.parser.ValidationException;
 import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.EntityType;
@@ -35,7 +39,11 @@ import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * A base class for managing Entity's Instance operations.
@@ -43,7 +51,7 @@ import java.util.*;
 public abstract class AbstractInstanceManager extends AbstractEntityManager {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractInstanceManager.class);
 
-    protected void checkType(String type) {
+    protected EntityType checkType(String type) {
         if (StringUtils.isEmpty(type)) {
             throw FalconWebException.newInstanceException("entity type is empty",
                     Response.Status.BAD_REQUEST);
@@ -54,6 +62,7 @@ public abstract class AbstractInstanceManager extends AbstractEntityManager {
                         "Instance management functions don't apply to Cluster entities",
                         Response.Status.BAD_REQUEST);
             }
+            return entityType;
         }
     }
 
@@ -154,6 +163,26 @@ public abstract class AbstractInstanceManager extends AbstractEntityManager {
             LOG.error("Failed to get logs for instances", e);
             throw FalconWebException.newInstanceException(e,
                     Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public FeedInstanceResult getListing(String type, String entity, String startStr,
+                                         String endStr, String colo) {
+        checkColo(colo);
+        EntityType entityType = checkType(type);
+        try {
+            if (entityType != EntityType.FEED) {
+                throw new IllegalArgumentException("getLocation is not applicable for " + type);
+            }
+            validateParams(type, entity, startStr, endStr);
+
+            Date start = EntityUtil.parseDateUTC(startStr);
+            Date end = getEndDate(start, endStr);
+            Entity entityObject = EntityUtil.getEntity(type, entity);
+            return FeedHelper.getFeedInstanceListing(entityObject, start, end);
+        } catch (Throwable e) {
+            LOG.error("Failed to get instances listing", e);
+            throw FalconWebException.newInstanceException(e, Response.Status.BAD_REQUEST);
         }
     }
 
