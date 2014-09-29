@@ -458,7 +458,9 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                     }
                 }
             }
-            return new InstancesResult("Running Instances", runInstances.toArray(new Instance[runInstances.size()]));
+            InstancesResult instancesResult = new InstancesResult(APIResult.Status.SUCCEEDED, "Running Instances");
+            instancesResult.setInstances(runInstances.toArray(new Instance[runInstances.size()]));
+            return instancesResult;
 
         } catch (OozieClientException e) {
             throw new FalconException(e);
@@ -1444,7 +1446,10 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
             }
             instance.cluster = cluster;
             instances[0] = instance;
-            return new InstancesResult("Instance for workflow id:" + jobId, instances);
+            InstancesResult instancesResult = new InstancesResult(APIResult.Status.SUCCEEDED,
+                    "Instance for workflow id:" + jobId);
+            instancesResult.setInstances(instances);
+            return instancesResult;
         } catch (Exception e) {
             throw new FalconException(e);
         }

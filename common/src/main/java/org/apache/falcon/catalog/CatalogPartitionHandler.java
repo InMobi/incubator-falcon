@@ -18,7 +18,6 @@
 
 package org.apache.falcon.catalog;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.entity.CatalogStorage;
 import org.apache.falcon.entity.ClusterHelper;
@@ -37,6 +36,7 @@ import org.apache.falcon.hadoop.HadoopClientFactory;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.HiveMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.MetaException;
@@ -53,7 +53,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -71,17 +70,13 @@ public final class CatalogPartitionHandler {
     public static final String CATALOG_TABLE = "catalog.table";
     public static final String UPDATE_TIME = "UPDATE_TIME";
     public static final String CREATE_TIME = "CREATE_TIME";
-
-    private AbstractCatalogService service;
-    private ExpressionHelper evaluator = ExpressionHelper.get();
-
-    private CatalogPartitionHandler() {
-        try {
-            service = CatalogServiceFactory.getCatalogService();
-        } catch (FalconException e) {
-            throw new RuntimeException(e);
+    private static final PathFilter PATH_FILTER = new PathFilter() {
+        @Override public boolean accept(Path path) {
+            return !path.getName().startsWith("_") && !path.getName().startsWith(".");
         }
-    }
+    };
+
+    private ExpressionHelper evaluator = ExpressionHelper.get();
 
     public static CatalogPartitionHandler get() {
         return INSTANCE;
@@ -133,27 +128,29 @@ public final class CatalogPartitionHandler {
                 //dynamic partitions
                 List<Partition> feedParts = feed.getPartitions().getPartitions();
                 try {
-                    FileStatus[] files = fs.globStatus(new Path(path, StringUtils.repeat("*", "/", feedParts.size())));
+                    FileStatus[] files = fs.globStatus(
+                        new Path(path, org.apache.falcon.util.StringUtils.repeat("*", "/", feedParts.size())),
+                        PATH_FILTER);
+
                     if (files == null) {
                         throw new FalconException("Output path " + path + " doesn't exist!");
                     }
                     if (files.length == 0) {
-                        throw new FalconException("Partition mismatch for feed " + feedName + " for data path " + path);
+                        throw new FalconException("Partition mismatch for feed " + feedName + " for data path "
+                            + path);
                     }
+
                     for (FileStatus file : files) {
-                        Map<String, String> partitions = new LinkedHashMap<String, String>();
-                        partitions.putAll(staticPartitions);
-                        String[] dynParts =
-                            StringUtils.stripStart(file.getPath().toUri().getPath(), path.toString()).split("/");
+                        List<String> partitionValue = new ArrayList<String>(staticPartitions.values());
+                        String[] dynParts = getDynamicPartitions(file.getPath(), path);
                         if (!file.isDir() || dynParts.length != feedParts.size()) {
                             throw new FalconException("Partition mismatch for feed " + feedName + " for data path "
                                 + file.getPath());
                         }
-
                         for (int index = 0; index < dynParts.length; index++) {
-                            partitions.put(feedParts.get(index).getName(), dynParts[index]);
+                            partitionValue.add(dynParts[index]);
                         }
-                        finalPartitions.put(new ArrayList<String>(partitions.values()), file.getPath().toString());
+                        finalPartitions.put(partitionValue, file.getPath().toString());
                     }
                 } catch (IOException e) {
                     throw new FalconException(e);
@@ -166,6 +163,15 @@ public final class CatalogPartitionHandler {
         }
     }
 
+    private String[] getDynamicPartitions(Path path, Path basePath) {
+        String dynPart = path.toUri().getPath().substring(basePath.toString().length());
+        if (dynPart.startsWith("/")) {      //remove / at start
+            dynPart = dynPart.substring(1);
+        }
+        return dynPart.split("/");
+    }
+
+    //TODO add retries
     private void dropPartition(CatalogStorage storage, Collection<String> values) throws FalconException {
         HiveMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
         try {
