@@ -63,7 +63,7 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
             String loggedNominalTime = properties.getProperty("nominalTime");
             String nominalTime = SchemaHelper.formatDateUTCToISO8601(loggedNominalTime, "yyyy'-'MM'-'dd'-'HH'-'mm");
             if (handler.getEventDelay(entity, nominalTime) == -1) {
-                LOG.warn("Late rerun expired for entity: {}",entity);
+                LOG.warn("Late rerun expired for entity: {} after de-queue",entity);
                 return;
             }
 
