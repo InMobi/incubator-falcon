@@ -57,8 +57,17 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
                 handler.offerToQueue(message);
                 return;
             }
+            Properties properties =
+                    handler.getWfEngine().getWorkflowProperties(message.getClusterName(), message.getWfId());
+            Entity entity = EntityUtil.getEntity(message.getEntityType(), message.getEntityName());
+            String loggedNominalTime = properties.getProperty("nominalTime");
+            String nominalTime = SchemaHelper.formatDateUTCToISO8601(loggedNominalTime, "yyyy'-'MM'-'dd'-'HH'-'mm");
+            if (handler.getEventDelay(entity, nominalTime) == -1) {
+                LOG.warn("Late rerun expired for entity: {}",entity);
+                return;
+            }
 
-            String detectLate = detectLate(message);
+            String detectLate = detectLate(message,properties);
 
             if (detectLate.equals("")) {
                 LOG.debug("No Late Data Detected, scheduling next late rerun for wf-id: {} at {}",
@@ -83,10 +92,8 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
         }
     }
 
-    public String detectLate(LaterunEvent message) throws Exception {
+    public String detectLate(LaterunEvent message, Properties properties) throws Exception {
         LateDataHandler late = new LateDataHandler();
-        Properties properties = handler.getWfEngine().getWorkflowProperties(
-                message.getClusterName(), message.getWfId());
         String falconInputFeeds = properties.getProperty("falconInputNames");
         String falconInPaths = properties.getProperty("falconInPaths");
         String falconInputFeedStorageTypes = properties.getProperty("falconInputFeedStorageTypes");
@@ -129,4 +136,5 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
 
         return late.detectChanges(lateLogPath, computedMetrics, conf);
     }
+
 }

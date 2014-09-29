@@ -23,7 +23,7 @@ import org.apache.activemq.ScheduledMessage;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.rerun.event.RerunEvent;
 import org.apache.falcon.rerun.event.RerunEventFactory;
-import org.apache.falcon.util.StartupProperties;
+import org.apache.falcon.util.RuntimeProperties;
 
 import javax.jms.*;
 import java.util.List;
@@ -42,7 +42,7 @@ public class ActiveMQueue<T extends RerunEvent> extends DelayedQueue<T> {
     private Destination destination;
     private MessageProducer producer;
     private MessageConsumer consumer;
-    private static final long SIX_HOURS = 6 * 60 * 60 * 1000;
+    private static final long TWELVE_HOURS = 12 * 60 * 60 * 1000;
 
     public ActiveMQueue(String brokerUrl, String destinationName) {
         this.brokerUrl = brokerUrl;
@@ -58,15 +58,15 @@ public class ActiveMQueue<T extends RerunEvent> extends DelayedQueue<T> {
             msg.setLongProperty(ScheduledMessage.AMQ_SCHEDULED_DELAY,
                     event.getDelay(TimeUnit.MILLISECONDS));
             msg.setStringProperty("TYPE", event.getType().name());
-            long messageTTLBuffer = SIX_HOURS;
+            long messageTTLBuffer = TWELVE_HOURS;
             try {
-                long messageTTLinMins = Long.valueOf(StartupProperties.get()
+                long messageTTLinMins = Long.valueOf(RuntimeProperties.get()
                         .getProperty("latequeue.ttl.buffer.mins"));
                 messageTTLBuffer = messageTTLinMins * 60 * 1000;
             } catch (NumberFormatException e) {
                 LOG.error(
                         "Error in parsing latequeue.ttl.buffer.mins, setting TTL to: {} milli-seconds",
-                        SIX_HOURS);
+                        TWELVE_HOURS);
             }
 
             producer.setTimeToLive(
