@@ -141,9 +141,9 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
                     entityName, nominalTime, workflowId, workflowUser, runId, operation,
                     SchemaHelper.formatDateUTC(startTime), duration);
 
-                notifyMetadataMappingService(entityName, operation, mapMessage.getString(ARG.logDir.getArgName()));
-
                 registerHCatPartitions(mapMessage);
+
+                notifyMetadataMappingService(entityName, operation, mapMessage.getString(ARG.logDir.getArgName()));
             }
         } catch (JMSException e) {
             LOG.info("Error in onMessage for subscriber of topic: {}", this, e);
@@ -158,16 +158,23 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
         if (CatalogServiceFactory.isEnabled()) {
             CatalogPartitionHandler handler = CatalogPartitionHandler.get();
             try {
-                String[] outFeeds = mapMessage.getString(Arg.FEED_NAMES.getOptionName()).split(",");
-                String[] outPaths = mapMessage.getString(Arg.FEED_INSTANCE_PATHS.getOptionName()).split(",");
-                String clusterName = mapMessage.getString(Arg.CLUSTER.getOptionName());
-                boolean delete = mapMessage.getString(Arg.OPERATION.getOptionName()).equals(EntityOps.DELETE.name());
-                for (int index = 0; index < outFeeds.length; index++) {
-                    try {
-                        handler.handlePartition(clusterName, outFeeds[index], outPaths[index], delete);
-                    } catch (Throwable e) {
-                        LOG.info("Failed to register partition for " + outFeeds[index] + " " + outPaths[index]);
+                String feedPathsFromMsg = mapMessage.getString(Arg.FEED_INSTANCE_PATHS.getOptionName());
+                if (feedPathsFromMsg != null) {
+                    String[] outFeeds = mapMessage.getString(Arg.FEED_NAMES.getOptionName()).split(",");
+                    String[] outPaths = feedPathsFromMsg.split(",");
+                    String clusterName = mapMessage.getString(Arg.CLUSTER.getOptionName());
+                    boolean delete =
+                        mapMessage.getString(Arg.OPERATION.getOptionName()).equals(EntityOps.DELETE.name());
+                    for (int index = 0; index < outFeeds.length; index++) {
+                        try {
+                            handler.handlePartition(clusterName, outFeeds[index], outPaths[index], delete);
+                        } catch (Throwable e) {
+                            LOG.info("Failed to register partition for feed {} with path {}", outFeeds[index],
+                                outPaths[index], e);
+                        }
                     }
+                } else {
+                    LOG.info("Empty feed instance paths, skipping hcat registration");
                 }
             } catch (JMSException e) {
                 throw new FalconException(e);

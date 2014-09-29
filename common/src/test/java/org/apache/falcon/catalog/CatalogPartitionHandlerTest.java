@@ -52,7 +52,6 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
     private static final int METASTORE_PORT = 49083;
     private static final String CATALOG_DB = "default";
     public static final Path DATA_PATH = new Path("/projects/falcon/clicks/2014/06/18/18");
-    public static final Path DATA2_PATH = new Path("/projects/falcon/clicks2/2014/06/18/18");
     public static final String CATALOG_TABLE = "clicks";
 
     private Thread hcatServer;
@@ -148,7 +147,6 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         Assert.assertEquals(new Path(newPartition.getLocation()).toUri().getPath(), DATA_PATH.toString());
     }
 
-
     @Test
     public void testEviction() throws Exception {
         String clusterName = embeddedCluster.getCluster().getName();
@@ -189,6 +187,9 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         //success case
         fs.mkdirs(new Path(DATA_PATH, "US/CA"));
         fs.mkdirs(new Path(DATA_PATH, "IND/KA"));
+        //Temporary files should not be considered
+        fs.mkdirs(new Path(DATA_PATH, "IND/.log"));
+        fs.create(new Path(DATA_PATH, "IND/_SUCCESS")).close();
         partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         List<HCatPartition>
             partitions = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
@@ -225,7 +226,6 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         Assert.assertEquals(partitions.get(1).getValues(), Arrays.asList("2014-06-18-18", "IND", "TN"));
         Assert.assertEquals(new Path(partitions.get(1).getLocation()).toUri().getPath(),
             new Path(DATA_PATH, "IND/TN").toString());
-
     }
 
     private Properties getProperties(String name, String value) {
