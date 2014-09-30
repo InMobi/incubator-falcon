@@ -94,6 +94,7 @@ public class FalconCLI {
     public static final String CLIENT_PROPERTIES = "/client.properties";
     public static final String LIFECYCLE_OPT = "lifecycle";
     public static final String PARARMS_OPT = "params";
+    public static final String LISTING_OPT = "listing";
 
     // Graph Commands
     public static final String GRAPH_CMD = "graph";
@@ -242,9 +243,11 @@ public class FalconCLI {
             result = client.rerunInstances(type, entity, start, end, colo, clusters, sourceClusters, lifeCycles);
         } else if (optionsList.contains(LOG_OPT)) {
             result = client.getLogsOfInstances(type, entity, start, end, colo, runid, lifeCycles);
+        } else if (optionsList.contains(LISTING_OPT)) {
+            result = client.getFeedListing(type, entity, start, end, colo);
         } else if (optionsList.contains(PARARMS_OPT)) {
             // start time is the nominal time of instance
-            result = client.getParamsOfInstance(type, entity, start, colo, clusters, sourceClusters, lifeCycles);
+            result = client.getParamsOfInstance(type, entity, start, colo, lifeCycles);
         } else {
             throw new FalconCLIException("Invalid command");
         }
@@ -557,6 +560,11 @@ public class FalconCLI {
                 false,
                 "Displays the workflow parameters for a given instance of specified nominal time");
 
+        Option listing = new Option(
+                LISTING_OPT,
+                false,
+                "Displays feed listing and their status between a start and end time range.");
+
 
         OptionGroup group = new OptionGroup();
         group.addOption(running);
@@ -570,6 +578,7 @@ public class FalconCLI {
         group.addOption(logs);
         group.addOption(continues);
         group.addOption(params);
+        group.addOption(listing);
 
         Option url = new Option(URL_OPTION, true, "Falcon URL");
         Option start = new Option(START_OPT, true,

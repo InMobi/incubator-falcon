@@ -43,8 +43,10 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 
@@ -270,25 +272,36 @@ public class FileSystemStorage implements Storage {
     }
 
     @Override
+    @SuppressWarnings("MagicConstant")
     public List<FeedInstanceStatus> getListing(Feed feed, String clusterName, LocationType locationType,
-                                               TimeZone timeZone, Date start, Date end) throws FalconException {
+                                               Date start, Date end) throws FalconException {
 
+        Calendar calendar = Calendar.getInstance();
         List<Location> clusterSpecificLocation = FeedHelper.
                 getLocations(FeedHelper.getCluster(feed, clusterName), feed);
         Location location = getLocation(clusterSpecificLocation, locationType);
         try {
             FileSystem fileSystem = HadoopClientFactory.get().createProxiedFileSystem(getConf());
             Cluster cluster = ClusterHelper.getCluster(clusterName);
-            String clusterPath = FeedHelper.evaluateClusterExp(cluster, location.getPath());
+            Properties baseProperties = FeedHelper.getClusterProperties(cluster);
+            baseProperties.putAll(FeedHelper.getFeedProperties(feed));
             List<FeedInstanceStatus> instances = new ArrayList<FeedInstanceStatus>();
-            while (end.after(start)) {
-                ExpressionHelper.setReferenceDate(start, timeZone);
-                String feedInstancePath = ExpressionHelper.get().evaluate(clusterPath, String.class);
+            Date feedStart = FeedHelper.getCluster(feed, clusterName).getValidity().getStart();
+            TimeZone tz = feed.getTimezone();
+            Date alignedStart = EntityUtil.getNextStartTime(feedStart, feed.getFrequency(), tz, start);
+
+            String basePath = location.getPath();
+            while (end.after(alignedStart)) {
+                Properties allProperties = ExpressionHelper.getTimeVariables(alignedStart, tz);
+                allProperties.putAll(baseProperties);
+                String feedInstancePath = ExpressionHelper.substitute(basePath, allProperties);
                 FileStatus fileStatus = getFileStatus(fileSystem, new Path(feedInstancePath));
                 FeedInstanceStatus instance = new FeedInstanceStatus(feedInstancePath);
+                String dateMask = FeedHelper.getDateFormatInPath(basePath);
+                Date date = FeedHelper.getDate(new Path(feedInstancePath), basePath, dateMask, tz.getID());
+                instance.setInstance(SchemaHelper.formatDateUTC(date));
                 if (fileStatus != null) {
                     instance.setCreationTime(fileStatus.getModificationTime());
-                    instance.setInstance(SchemaHelper.formatDateUTC(start));
                     ContentSummary contentSummary = fileSystem.getContentSummary(fileStatus.getPath());
                     if (contentSummary != null) {
                         long size = contentSummary.getSpaceConsumed();
@@ -307,8 +320,10 @@ public class FileSystemStorage implements Storage {
                     }
                 }
                 instances.add(instance);
-                start = new Date(start.getTime()
-                        + ExpressionHelper.get().evaluate(feed.getFrequency().getFrequency(), Long.class));
+                calendar.setTime(alignedStart);
+                calendar.add(feed.getFrequency().getTimeUnit().getCalendarUnit(),
+                        feed.getFrequency().getFrequencyAsInt());
+                alignedStart = calendar.getTime();
             }
             return instances;
         } catch (IOException e) {

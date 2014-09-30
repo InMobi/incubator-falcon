@@ -24,7 +24,6 @@ import org.apache.falcon.entity.v0.feed.LocationType;
 
 import java.util.Date;
 import java.util.List;
-import java.util.TimeZone;
 
 /**
  * A class to encapsulate the storage for a given feed which can either be
@@ -91,6 +90,6 @@ public interface Storage {
     /**
      *
      */
-    List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType, TimeZone timeZone,
+    List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType,
                                         Date start, Date end) throws FalconException;
 }

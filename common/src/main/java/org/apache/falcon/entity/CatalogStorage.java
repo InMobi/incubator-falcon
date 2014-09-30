@@ -33,7 +33,6 @@ import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.regex.Matcher;
 
 /**
@@ -347,7 +346,7 @@ public class CatalogStorage implements Storage {
     }
 
     @Override
-    public List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType, TimeZone timeZone,
+    public List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType,
                                                Date start, Date end) throws FalconException {
         throw new UnsupportedOperationException("getListing");
     }
