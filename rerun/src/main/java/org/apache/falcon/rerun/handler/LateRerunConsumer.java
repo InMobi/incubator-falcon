@@ -63,11 +63,11 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
             String loggedNominalTime = properties.getProperty("nominalTime");
             String nominalTime = SchemaHelper.formatDateUTCToISO8601(loggedNominalTime, "yyyy'-'MM'-'dd'-'HH'-'mm");
             if (handler.getEventDelay(entity, nominalTime) == -1) {
-                LOG.warn("Late rerun expired for entity: {} after de-queue",entity);
+                LOG.warn("Late rerun expired for entity: {} after de-queue", entity);
                 return;
             }
 
-            String detectLate = detectLate(message,properties);
+            String detectLate = detectLate(message, properties);
 
             if (detectLate.equals("")) {
                 LOG.debug("No Late Data Detected, scheduling next late rerun for wf-id: {} at {}",
