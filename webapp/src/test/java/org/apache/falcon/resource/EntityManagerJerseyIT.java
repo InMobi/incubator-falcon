@@ -325,6 +325,7 @@ public class EntityManagerJerseyIT {
         Date endTime = getEndTime();
         response = update(context, process, endTime);
         context.assertSuccessful(response);
+        OozieTestUtils.waitForBundleStart(context, Status.PREP, Status.RUNNING);
 
         //Assert that update creates new bundle and old coord is running
         bundles = OozieTestUtils.getBundles(context);

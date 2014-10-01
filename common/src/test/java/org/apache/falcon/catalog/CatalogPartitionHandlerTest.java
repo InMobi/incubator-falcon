@@ -19,7 +19,6 @@
 package org.apache.falcon.catalog;
 
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.falcon.FalconException;
 import org.apache.falcon.cluster.util.EmbeddedCluster;
 import org.apache.falcon.entity.AbstractTestBase;
 import org.apache.falcon.entity.ClusterHelper;
@@ -174,15 +173,16 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         String clusterName = embeddedCluster.getCluster().getName();
         String feedName = createFeed(false).getName();
         FileSystem fs = embeddedCluster.getFileSystem();
-        fs.mkdirs(DATA_PATH);
 
-        //should fail if incompatible dynamic partitions
-        try {
-            partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
-            Assert.fail("Expected exception!");
-        } catch (FalconException e) {
-            //expected
-        }
+        //no dynamic parts, partition should be registered with *
+        fs.mkdirs(DATA_PATH);
+        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
+        List<HCatPartition> partitions =
+                HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
+        Assert.assertNotNull(partitions);
+        Assert.assertEquals(partitions.size(), 1);
+        HCatPartition part = partitions.get(0);
+        Assert.assertTrue(part.getValues().equals(Arrays.asList("2014-06-18-18", "*", "*")));
 
         //success case
         fs.mkdirs(new Path(DATA_PATH, "US/CA"));
@@ -190,9 +190,9 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         //Temporary files should not be considered
         fs.mkdirs(new Path(DATA_PATH, "IND/.log"));
         fs.create(new Path(DATA_PATH, "IND/_SUCCESS")).close();
+        fs.create(new Path(DATA_PATH, "IND/part-file")).close();
         partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
-        List<HCatPartition>
-            partitions = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
+        partitions = HiveTestUtils.getPartitions(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partitions);
         Assert.assertEquals(partitions.size(), 2);
 
