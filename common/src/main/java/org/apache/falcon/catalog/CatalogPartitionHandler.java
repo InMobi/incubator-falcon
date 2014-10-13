@@ -40,9 +40,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.*;
-import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
-import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.api.*;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -195,8 +193,16 @@ public final class CatalogPartitionHandler {
     private void dropPartition(CatalogStorage storage, Collection<String> values) throws FalconException {
         IMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
         try {
-            LOG.info("Dropping partition {} for table {}.{}", values, storage.getDatabase(), storage.getTable());
-            client.dropPartition(storage.getDatabase(), storage.getTable(), new ArrayList<String>(values), false);
+            LOG.info("Dropping partitions {} for table {}.{}", values, storage.getDatabase(), storage.getTable());
+
+            List<Partition> partitions = client.listPartitions(storage.getDatabase(), storage.getTable(),
+                    new ArrayList<String>(values), Short.MAX_VALUE);
+            for (Partition p : partitions) {
+                LOG.info("Dropping partition {} ", p.getValues());
+                client.dropPartition(storage.getDatabase(), storage.getTable(),
+                        new ArrayList<String>(p.getValues()), false);
+            }
+
         } catch (NoSuchObjectException ignore) {
             //ignore
         } catch (TException e) {
