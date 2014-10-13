@@ -40,9 +40,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.*;
-import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.apache.hadoop.hive.metastore.api.NoSuchObjectException;
-import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.api.*;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,9 +192,29 @@ public final class CatalogPartitionHandler {
 
     private void dropPartition(CatalogStorage storage, Collection<String> values) throws FalconException {
         IMetaStoreClient client = getMetastoreClient(storage.getCatalogUrl());
+        String [] valuesArray = (String[]) values.toArray();
         try {
-            LOG.info("Dropping partition {} for table {}.{}", values, storage.getDatabase(), storage.getTable());
-            client.dropPartition(storage.getDatabase(), storage.getTable(), new ArrayList<String>(values), false);
+            LOG.info("Dropping partitions {} for table {}.{}", values, storage.getDatabase(), storage.getTable());
+            List<FieldSchema> partitionSchema = client.getTable(storage.getDatabase(),
+                    storage.getTable()).getPartitionKeys();
+
+            String filterString = "";
+            for (int i=0; i < values.size(); i++) {
+                filterString += partitionSchema.get(i).getName() + "='" + valuesArray[i] + "' ";
+                if (i != values.size() -1) {
+                    filterString += " AND ";
+                }
+            }
+
+            LOG.info("Filterstring is: " + filterString);
+            List<Partition> partitions = client.listPartitionsByFilter(storage.getDatabase(), storage.getTable(),
+                    filterString, Short.MAX_VALUE);
+            for (int i=0; i < partitions.size(); i++) {
+                LOG.info("Dropping partition {} ", partitions.get(i).getValues());
+                client.dropPartition(storage.getDatabase(), storage.getTable(),
+                        new ArrayList<String>(partitions.get(i).getValues()), false);
+            }
+
         } catch (NoSuchObjectException ignore) {
             //ignore
         } catch (TException e) {
