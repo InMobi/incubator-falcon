@@ -18,7 +18,6 @@
 
 package org.apache.falcon.catalog;
 
-import EDU.oswego.cs.dl.util.concurrent.FJTask;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.entity.CatalogStorage;
 import org.apache.falcon.entity.ClusterHelper;
