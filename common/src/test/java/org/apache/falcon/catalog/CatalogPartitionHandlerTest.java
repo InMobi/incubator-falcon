@@ -150,15 +150,17 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
     public void testEviction() throws Exception {
         String clusterName = embeddedCluster.getCluster().getName();
         String feedName = createFeed(true).getName();
-        partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), true);
 
+        //add partition
         FileSystem fs = embeddedCluster.getFileSystem();
         fs.mkdirs(DATA_PATH);
+        fs.mkdirs(new Path(DATA_PATH, "US"));
         partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), false);
         HCatPartition
             partition = HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
         Assert.assertNotNull(partition);
 
+        //drop partition
         partHandler.handlePartition(clusterName, feedName, DATA_PATH.toString(), true);
         try {
             HiveTestUtils.getPartition(metastoreUrl, CATALOG_DB, CATALOG_TABLE, "ds", "2014-06-18-18");
@@ -182,7 +184,7 @@ public class CatalogPartitionHandlerTest extends AbstractTestBase {
         Assert.assertNotNull(partitions);
         Assert.assertEquals(partitions.size(), 1);
         HCatPartition part = partitions.get(0);
-        Assert.assertTrue(part.getValues().equals(Arrays.asList("2014-06-18-18", "*", "*")));
+        Assert.assertTrue(part.getValues().equals(Arrays.asList("2014-06-18-18", "NODATA", "NODATA")));
 
         //success case
         fs.mkdirs(new Path(DATA_PATH, "US/CA"));
