@@ -344,6 +344,7 @@
                                 <exclude>**/.externalToolBuilders/**</exclude>
                                 <exclude>html5-ui/**</exclude>
                                 <exclude>metastore_db/**</exclude>
+                                <exclude>*.log</exclude>
                             </excludes>
                         </configuration>
                         <executions>
