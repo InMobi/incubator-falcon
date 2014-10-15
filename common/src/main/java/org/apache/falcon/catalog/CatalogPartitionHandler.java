@@ -32,6 +32,8 @@ import org.apache.falcon.entity.v0.feed.LocationType;
 import org.apache.falcon.entity.v0.feed.Property;
 import org.apache.falcon.expression.ExpressionHelper;
 import org.apache.falcon.hadoop.HadoopClientFactory;
+import org.apache.falcon.util.RuntimeProperties;
+import org.apache.falcon.util.StartupProperties;
 import org.apache.falcon.util.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -49,6 +51,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Listens to JMS message and registers partitions.
@@ -166,9 +169,9 @@ public final class CatalogPartitionHandler {
         if (partitionValue.size() > regPartCnt) {
             return partitionValue.subList(0, regPartCnt);
         } else if (partitionValue.size() < regPartCnt) {
-            //Add * for extra partition values
+            //Add 'NODATA' for extra partition values
             partitionValue.addAll(
-                    Arrays.asList(StringUtils.repeat("*", "/", regPartCnt - partitionValue.size()).split("/")));
+                    Arrays.asList(StringUtils.repeat("NODATA", "/", regPartCnt - partitionValue.size()).split("/")));
         }
         return partitionValue;
     }
@@ -290,6 +293,10 @@ public final class CatalogPartitionHandler {
     private IMetaStoreClient getMetastoreClient(String catalogUrl) throws FalconException {
         if (!METASTORE_CLIENT_MAP.containsKey(catalogUrl)) {
             HiveConf hiveConf = HiveCatalogService.createHiveConf(catalogUrl);
+            hiveConf.set(HiveConf.ConfVars.METASTORETHRIFTFAILURERETRIES.varname,
+                    StartupProperties.get().getProperty("catalog.service.retrycount", "3"));
+            hiveConf.set(HiveConf.ConfVars.METASTORE_CLIENT_CONNECT_RETRY_DELAY.varname,
+                    StartupProperties.get().getProperty("catalog.service.retrydelayinsecs", "0"));
             try {
                 IMetaStoreClient client = RetryingMetaStoreClient.getProxy(hiveConf, new HiveMetaHookLoader() {
                     @Override
