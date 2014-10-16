@@ -565,7 +565,6 @@ public class FalconCLI {
                 false,
                 "Displays feed listing and their status between a start and end time range.");
 
-
         OptionGroup group = new OptionGroup();
         group.addOption(running);
         group.addOption(status);

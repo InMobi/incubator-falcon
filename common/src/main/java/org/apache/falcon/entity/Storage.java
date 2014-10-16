@@ -88,7 +88,7 @@ public interface Storage {
     void validateACL(String owner, String group, String permissions) throws FalconException;
 
     /**
-     *
+     * Get Feed Listing for a feed between a date range.
      */
     List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType,
                                         Date start, Date end) throws FalconException;

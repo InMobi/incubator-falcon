@@ -811,7 +811,7 @@ public class FalconClient {
                 sb.append(toAppend).append("\t");
 
                 toAppend = StringUtils.isEmpty(instance.getUri()) ? "-" : instance.getUri();
-                sb.append(toAppend).append("\t");
+                sb.append(toAppend).append("\n");
             }
         }
         sb.append("\nAdditional Information:\n");

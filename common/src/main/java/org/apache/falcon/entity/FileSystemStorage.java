@@ -291,7 +291,7 @@ public class FileSystemStorage implements Storage {
             Date alignedStart = EntityUtil.getNextStartTime(feedStart, feed.getFrequency(), tz, start);
 
             String basePath = location.getPath();
-            while (end.after(alignedStart)) {
+            while (!end.before(alignedStart)) {
                 Properties allProperties = ExpressionHelper.getTimeVariables(alignedStart, tz);
                 allProperties.putAll(baseProperties);
                 String feedInstancePath = ExpressionHelper.substitute(basePath, allProperties);
