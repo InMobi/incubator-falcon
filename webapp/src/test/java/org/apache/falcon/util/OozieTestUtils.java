@@ -31,6 +31,8 @@ import org.apache.oozie.client.CoordinatorJob;
 import org.apache.oozie.client.Job;
 import org.apache.oozie.client.ProxyOozieClient;
 import org.apache.oozie.client.WorkflowJob;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -42,6 +44,7 @@ import java.util.Set;
  * Oozie Utility class for integration-tests.
  */
 public final class OozieTestUtils {
+    private static final Logger LOG = LoggerFactory.getLogger(OozieTestUtils.class);
 
     private OozieTestUtils() {
     }
@@ -113,10 +116,12 @@ public final class OozieTestUtils {
         }
 
         Set<Job.Status> statuses = new HashSet<Job.Status>(Arrays.asList(status));
+        Job.Status lastStatus = null;
         String bundleId = bundles.get(0).getId();
         for (int i = 0; i < 15; i++) {
             Thread.sleep(i * 1000);
             BundleJob bundle = ozClient.getBundleJobInfo(bundleId);
+            lastStatus = bundle.getStatus();
             if (statuses.contains(bundle.getStatus())) {
                 if (statuses.contains(Job.Status.FAILED) || statuses.contains(Job.Status.KILLED)) {
                     return;
@@ -132,9 +137,9 @@ public final class OozieTestUtils {
                     return;
                 }
             }
-            System.out.println("Waiting for bundle " + bundleId + " in " + statuses + " state");
+            LOG.info("Waiting for bundle {} in {} state. Current status {}", bundleId, statuses, bundle.getStatus());
         }
-        throw new Exception("Bundle " + bundleId + " is not " + statuses + " in oozie");
+        throw new Exception("Bundle " + bundleId + " is not " + statuses + " in oozie. last status " + lastStatus);
     }
 
     public static WorkflowJob getWorkflowJob(Cluster cluster, String filter) throws Exception {

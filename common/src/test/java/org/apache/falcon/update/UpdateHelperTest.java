@@ -81,6 +81,11 @@ public class UpdateHelperTest extends AbstractTestBase {
         storeEntity(EntityType.FEED, "impressionFeed");
         storeEntity(EntityType.FEED, "imp-click-join1");
         storeEntity(EntityType.FEED, "imp-click-join2");
+
+        FileSystem fs = dfsCluster.getFileSystem();
+        fs.delete(new Path("/projects/falcon/clicks/"), true);
+        fs.delete(new Path("/projects/falcon/clicksStats"), true);
+        fs.delete(new Path("/projects/falcon/clicksMetaData"), true);
     }
 
     private void prepare(Process process) throws IOException, FalconException {
