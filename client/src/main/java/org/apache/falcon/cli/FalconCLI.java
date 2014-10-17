@@ -268,7 +268,7 @@ public class FalconCLI {
             throw new FalconCLIException("Missing argument: colo");
         }
 
-        if (!optionsList.contains(RUNNING_OPT)) {
+        if (!optionsList.contains(RUNNING_OPT) && !optionsList.contains(STATUS_OPT)) {
             if (start == null || start.equals("")) {
                 throw new FalconCLIException("Missing argument: start");
             }
