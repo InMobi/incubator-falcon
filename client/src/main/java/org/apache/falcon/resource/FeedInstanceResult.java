@@ -79,7 +79,7 @@ public class FeedInstanceResult extends APIResult {
         public long creationTime;
 
         @XmlElement
-        public Long size;
+        public long size;
 
         public Instance() {
         }
