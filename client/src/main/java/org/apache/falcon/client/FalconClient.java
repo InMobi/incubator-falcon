@@ -762,6 +762,13 @@ public class FalconClient {
                     }
                     sb.append("\n");
                 }
+                if (instance.actions != null) {
+                    sb.append("actions:\n");
+                    for (InstancesResult.InstanceAction action : instance.actions) {
+                        sb.append("    ").append(action.getAction()).append("\t");
+                        sb.append(action.getStatus()).append("\t").append(action.getLogFile()).append("\n");
+                    }
+                }
 
             }
         }
