@@ -29,6 +29,7 @@ import org.apache.falcon.entity.v0.feed.LocationType;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -342,6 +343,12 @@ public class CatalogStorage implements Storage {
     public void validateACL(String owner, String group, String permissions) throws FalconException {
         // This is not supported in Hive today as authorization is not enforced on table and
         // partition listing
+    }
+
+    @Override
+    public List<FeedInstanceStatus> getListing(Feed feed, String cluster, LocationType locationType,
+                                               Date start, Date end) throws FalconException {
+        throw new UnsupportedOperationException("getListing");
     }
 
     @Override

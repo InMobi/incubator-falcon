@@ -40,8 +40,12 @@ public final class ClusterHelper {
     private ClusterHelper() {
     }
 
+    public static Cluster getCluster(String cluster) throws FalconException {
+        return ConfigurationStore.get().get(EntityType.CLUSTER, cluster);
+    }
+
     public static FileSystem getFileSystem(String cluster) throws FalconException {
-        Cluster clusterEntity = ConfigurationStore.get().get(EntityType.CLUSTER, cluster);
+        Cluster clusterEntity = getCluster(cluster);
         Configuration conf = ClusterHelper.getConfiguration(clusterEntity);
         return HadoopClientFactory.get().createProxiedFileSystem(conf);
     }

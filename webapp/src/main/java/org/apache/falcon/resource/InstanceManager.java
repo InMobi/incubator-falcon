@@ -62,6 +62,19 @@ public class InstanceManager extends AbstractInstanceManager {
     }
 
     @GET
+    @Path("listing/{type}/{entity}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Monitored(event = "instance-listing")
+    @Override
+    public FeedInstanceResult getListing(@Dimension("type") @PathParam("type") String type,
+                                     @Dimension("entity") @PathParam("entity") String entity,
+                                     @Dimension("start-time") @QueryParam("start") String startStr,
+                                     @Dimension("end-time") @QueryParam("end") String endStr,
+                                     @Dimension("colo") @QueryParam("colo") String colo) {
+        return super.getListing(type, entity, startStr, endStr, colo);
+    }
+
+    @GET
     @Path("summary/{type}/{entity}")
     @Produces(MediaType.APPLICATION_JSON)
     @Monitored(event = "instance-summary")

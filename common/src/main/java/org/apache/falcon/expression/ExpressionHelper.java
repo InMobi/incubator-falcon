@@ -108,11 +108,23 @@ public final class ExpressionHelper implements FunctionMapper, VariableResolver 
         Properties vars = threadVariables.get();
         Calendar cal = Calendar.getInstance(tz);
         cal.setTime(date);
-        vars.put(VARS.YEAR.name(), cal.get(Calendar.YEAR));
+        vars.put(VARS.YEAR.name(), String.format("%04d", cal.get(Calendar.YEAR)));
         vars.put(VARS.MONTH.name(), String.format("%02d", (cal.get(Calendar.MONTH) + 1)));
         vars.put(VARS.DAY.name(), String.format("%02d", cal.get(Calendar.DAY_OF_MONTH)));
         vars.put(VARS.HOUR.name(), String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)));
         vars.put(VARS.MINUTE.name(), String.format("%02d", cal.get(Calendar.MINUTE)));
+    }
+
+    public static Properties getTimeVariables(Date date, TimeZone tz) {
+        Properties vars = new Properties();
+        Calendar cal = Calendar.getInstance(tz);
+        cal.setTime(date);
+        vars.put(VARS.YEAR.name(), String.format("%04d", cal.get(Calendar.YEAR)));
+        vars.put(VARS.MONTH.name(), String.format("%02d", (cal.get(Calendar.MONTH) + 1)));
+        vars.put(VARS.DAY.name(), String.format("%02d", cal.get(Calendar.DAY_OF_MONTH)));
+        vars.put(VARS.HOUR.name(), String.format("%02d", cal.get(Calendar.HOUR_OF_DAY)));
+        vars.put(VARS.MINUTE.name(), String.format("%02d", cal.get(Calendar.MINUTE)));
+        return vars;
     }
 
     private static int getDayOffset(String weekDayName) {
