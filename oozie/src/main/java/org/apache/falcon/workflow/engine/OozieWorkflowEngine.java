@@ -584,7 +584,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
     }
 
     private void populateInstanceActions(String cluster, WorkflowJob wfJob, Instance instance)
-            throws FalconException {
+        throws FalconException {
 
         List<InstancesResult.InstanceAction> instanceActions = new ArrayList<InstancesResult.InstanceAction>();
 
