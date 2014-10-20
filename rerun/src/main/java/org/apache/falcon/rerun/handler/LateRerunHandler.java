@@ -95,7 +95,7 @@ public class LateRerunHandler<M extends DelayedQueue<LaterunEvent>> extends
     }
     //SUSPEND CHECKSTYLE CHECK ParameterNumberCheck
 
-    private long getEventDelay(Entity entity, String nominalTime) throws FalconException {
+    public long getEventDelay(Entity entity, String nominalTime) throws FalconException {
 
         Date instanceDate = EntityUtil.parseDateUTC(nominalTime);
         LateProcess lateProcess = EntityUtil.getLateProcess(entity);
