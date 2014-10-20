@@ -26,6 +26,7 @@ import org.apache.falcon.monitors.Dimension;
 import org.apache.falcon.monitors.Monitored;
 import org.apache.falcon.resource.APIResult;
 import org.apache.falcon.resource.AbstractInstanceManager;
+import org.apache.falcon.resource.FeedInstanceResult;
 import org.apache.falcon.resource.InstancesResult;
 import org.apache.falcon.resource.InstancesSummaryResult;
 import org.apache.falcon.resource.channel.Channel;
@@ -106,6 +107,26 @@ public class InstanceManagerProxy extends AbstractInstanceManager {
             protected InstancesResult doExecute(String colo) throws FalconException {
                 return getInstanceManager(colo).invoke("getStatus",
                         type, entity, startStr, endStr, colo, lifeCycles);
+            }
+        }.execute(colo, type, entity);
+    }
+
+    @GET
+    @Path("listing/{type}/{entity}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Monitored(event = "instance-listing")
+    @Override
+    public FeedInstanceResult getListing(
+            @Dimension("entityType") @PathParam("type") final String type,
+            @Dimension("entityName") @PathParam("entity") final String entity,
+            @Dimension("start-time") @QueryParam("start") final String startStr,
+            @Dimension("end-time") @QueryParam("end") final String endStr,
+            @Dimension("colo") @QueryParam("colo") final String colo) {
+        return new InstanceProxy<FeedInstanceResult>(FeedInstanceResult.class) {
+            @Override
+            protected FeedInstanceResult doExecute(String colo) throws FalconException {
+                return getInstanceManager(colo).invoke("getListing",
+                        type, entity, startStr, endStr, colo);
             }
         }.execute(colo, type, entity);
     }
