@@ -110,11 +110,6 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
             "failed-post-processing"
     );
 
-    public static final List<String> PARENT_WF_ACTION_TYPES = Arrays.asList(
-            "pig",
-            "hive"
-    );
-
     private static final String[] BUNDLE_UPDATEABLE_PROPS =
         new String[]{"parallel", "clusters.clusters[\\d+].validity.end", };
 
@@ -605,14 +600,19 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                         instanceActions.add(instanceAction);
                     }
                 }
-            } else if (!action.getType().startsWith(":")
-                    && ((PARENT_WF_ACTION_NAMES.contains(action.getName())
-                    && !Status.SUCCEEDED.toString().equals(action.getExternalStatus()))
-                    || PARENT_WF_ACTION_TYPES.contains(action.getType()))) {
-                InstancesResult.InstanceAction instanceAction =
-                        new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
-                                action.getConsoleUrl());
-                instanceActions.add(instanceAction);
+            } else if (!action.getType().startsWith(":")) {
+                if (PARENT_WF_ACTION_NAMES.contains(action.getName())
+                        && !Status.SUCCEEDED.toString().equals(action.getExternalStatus())) {
+                    InstancesResult.InstanceAction instanceAction =
+                            new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
+                                    action.getConsoleUrl());
+                    instanceActions.add(instanceAction);
+                } else if (!PARENT_WF_ACTION_NAMES.contains(action.getName())) {
+                    InstancesResult.InstanceAction instanceAction =
+                            new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
+                                    action.getConsoleUrl());
+                    instanceActions.add(instanceAction);
+                }
             }
         }
         instance.actions = instanceActions.toArray(new InstancesResult.InstanceAction[instanceActions.size()]);
