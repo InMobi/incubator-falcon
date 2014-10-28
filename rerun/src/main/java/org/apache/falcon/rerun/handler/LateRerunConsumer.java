@@ -61,7 +61,7 @@ public class LateRerunConsumer<T extends LateRerunHandler<DelayedQueue<LaterunEv
                     handler.getWfEngine().getWorkflowProperties(message.getClusterName(), message.getWfId());
             Entity entity = EntityUtil.getEntity(message.getEntityType(), message.getEntityName());
             String loggedNominalTime = properties.getProperty("nominalTime");
-            String nominalTime = SchemaHelper.formatDateUTCToISO8601(loggedNominalTime, "yyyy'-'MM'-'dd'-'HH'-'mm");
+            String nominalTime = SchemaHelper.formatDateUTCToISO8601(loggedNominalTime, "yyyy-MM-dd-HH-mm");
             if (handler.getEventDelay(entity, nominalTime) == -1) {
                 LOG.warn("Late rerun expired for entity: {} after de-queue", entity);
                 return;
