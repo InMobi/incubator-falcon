@@ -590,7 +590,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
 
         List<WorkflowAction> wfActions = wfJob.getActions();
         for (WorkflowAction action : wfActions) {
-            if (action.getType().equalsIgnoreCase("sub-workflow")) {
+            if (action.getType().equalsIgnoreCase("sub-workflow") && StringUtils.isNotEmpty(action.getExternalId())) {
                 List<WorkflowAction> subWorkFlowActions = getWorkflowInfo(cluster, action.getExternalId()).getActions();
                 for (WorkflowAction subWfAction : subWorkFlowActions) {
                     if (!subWfAction.getType().startsWith(":")) {
