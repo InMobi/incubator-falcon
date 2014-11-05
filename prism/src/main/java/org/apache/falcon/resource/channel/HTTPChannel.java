@@ -56,6 +56,8 @@ public class HTTPChannel extends AbstractChannel {
 
     private static final Properties DEPLOYMENT_PROPERTIES = DeploymentProperties.get();
 
+    private static final String REMOTE_USER = "Remote-User";
+
     private Class service;
     private String urlPrefix;
 
@@ -91,6 +93,7 @@ public class HTTPChannel extends AbstractChannel {
             ClientResponse response = getClient()
                     .resource(UriBuilder.fromUri(url).build().normalize())
                     .queryParam("user.name", user)
+                    .header(REMOTE_USER, user)
                     .accept(accept).type(mimeType)
                     .method(httpMethod, ClientResponse.class,
                             (isPost(httpMethod) ? incomingRequest.getInputStream() : null));
@@ -98,10 +101,6 @@ public class HTTPChannel extends AbstractChannel {
 
             Family status = response.getClientResponseStatus().getFamily();
             if (status == Family.INFORMATIONAL || status == Family.SUCCESSFUL) {
-                return (T) response.getEntity(method.getReturnType());
-            } else if (response.getClientResponseStatus().getStatusCode()
-                    == Response.Status.BAD_REQUEST.getStatusCode()) {
-                LOG.error("Request failed: {}", response.getClientResponseStatus().getStatusCode());
                 return (T) response.getEntity(method.getReturnType());
             } else {
                 LOG.error("Request failed: {}", response.getClientResponseStatus().getStatusCode());
