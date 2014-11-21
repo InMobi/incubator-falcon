@@ -121,6 +121,11 @@
             <source>oozie-el-extensions/target/falcon-oozie-el-extension-${project.version}.jar</source>
             <outputDirectory>oozie/libext</outputDirectory>
         </file>
+
+        <file>
+            <source>hadoop-webapp/target/oozie/WEB-INF/lib/s4fs-0.1.jar</source>
+            <outputDirectory>libext</outputDirectory>
+        </file>
     </files>
 </assembly>
     
