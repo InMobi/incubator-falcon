@@ -94,7 +94,7 @@ public final class HadoopClientFactory {
         Validate.notNull(uri, "uri cannot be null");
 
         try {
-            return createFileSystem(UserGroupInformation.getLoginUser(), uri, conf);
+            return createFileSystem(UserGroupInformation.getCurrentUser(), uri, conf);
         } catch (IOException e) {
             throw new FalconException("Exception while getting FileSystem for: " + uri, e);
         }
