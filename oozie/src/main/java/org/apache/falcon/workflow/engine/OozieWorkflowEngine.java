@@ -105,7 +105,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
 
     public static final List<String> PARENT_WF_ACTION_NAMES = Arrays.asList(
             "pre-processing",
-            "should-record",
+            "recordsize",
             "succeeded-post-processing",
             "failed-post-processing"
     );
@@ -569,7 +569,9 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                     if (action == JobAction.PARAMS) {
                         instance.wfParams = getWFParams(jobInfo);
                     }
-                    populateInstanceActions(cluster, jobInfo, instance);
+                    if (action == JobAction.STATUS) {
+                        populateInstanceActions(cluster, jobInfo, instance);
+                    }
                 }
                 instance.details = coordinatorAction.getMissingDependencies();
                 instances.add(instance);
@@ -607,7 +609,8 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                             new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
                                     action.getConsoleUrl());
                     instanceActions.add(instanceAction);
-                } else if (!PARENT_WF_ACTION_NAMES.contains(action.getName())) {
+                } else if (!PARENT_WF_ACTION_NAMES.contains(action.getName())
+                        && !StringUtils.equals(action.getExternalId(), "-")) {
                     InstancesResult.InstanceAction instanceAction =
                             new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
                                     action.getConsoleUrl());
