@@ -32,6 +32,7 @@ import org.apache.falcon.entity.v0.feed.LocationType;
 import org.apache.falcon.entity.v0.feed.Property;
 import org.apache.falcon.expression.ExpressionHelper;
 import org.apache.falcon.hadoop.HadoopClientFactory;
+import org.apache.falcon.security.CurrentUser;
 import org.apache.falcon.util.StartupProperties;
 import org.apache.falcon.util.StringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -111,7 +112,8 @@ public final class CatalogPartitionHandler {
         } else {
             //generate operation
             FileSystem fs =
-                HadoopClientFactory.get().createFileSystem(basePath.toUri(), ClusterHelper.getConfiguration(cluster));
+                HadoopClientFactory.get().createProxiedFileSystem(CurrentUser.getUser(), basePath.toUri(), ClusterHelper
+                        .getConfiguration(cluster));
             try {
                 if (!fs.exists(basePath)) {
                     LOG.info("No-op for feed {} as {} doesn't exist", feedName, pathStr);

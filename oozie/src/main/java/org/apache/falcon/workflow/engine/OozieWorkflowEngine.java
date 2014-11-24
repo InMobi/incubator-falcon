@@ -1469,8 +1469,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
     }
 
     @Override
-    public InstancesResult getJobDetails(String cluster, String jobId) throws FalconException {
-        Instance[] instances = new Instance[1];
+    public Instance getJobDetails(String cluster, String jobId) throws FalconException {
         Instance instance = new Instance();
         try {
             WorkflowJob jobInfo = OozieClientFactory.get(cluster).getJobInfo(jobId);
@@ -1481,11 +1480,10 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                 instance.endTime = jobInfo.getEndTime();
             }
             instance.cluster = cluster;
-            instances[0] = instance;
-            InstancesResult instancesResult = new InstancesResult(APIResult.Status.SUCCEEDED,
-                    "Instance for workflow id:" + jobId);
-            instancesResult.setInstances(instances);
-            return instancesResult;
+            //Ideally user should be set in user field, but externally exposed Instance is re-used here, setting user in
+            // details. This is used only by FalconTopicSubscriber
+            instance.details = jobInfo.getUser();
+            return instance;
         } catch (Exception e) {
             throw new FalconException(e);
         }

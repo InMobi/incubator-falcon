@@ -25,6 +25,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.hadoop.HadoopClientFactory;
+import org.apache.falcon.security.CurrentUser;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -120,7 +121,7 @@ public class LineageRecorder  extends Configured implements Tool {
         OutputStream out = null;
         Path file = new Path(lineageFile);
         try {
-            FileSystem fs = HadoopClientFactory.get().createFileSystem(file.toUri(), getConf());
+            FileSystem fs = HadoopClientFactory.get().createProxiedFileSystem(CurrentUser.getUser(), file.toUri(), getConf());
             out = fs.create(file);
 
             // making sure falcon can read this file

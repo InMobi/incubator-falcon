@@ -35,6 +35,7 @@ import org.apache.falcon.security.CurrentUser;
 import org.apache.falcon.workflow.FalconPostProcessing.Arg;
 import org.apache.falcon.workflow.WorkflowEngineFactory;
 import org.apache.falcon.workflow.engine.AbstractWorkflowEngine;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -110,11 +111,17 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
             String status = mapMessage.getString(ARG.status.getArgName());
             String operation = mapMessage.getString(ARG.operation.getArgName());
 
-            CurrentUser.authenticate(workflowUser);
+            CurrentUser.authenticate(UserGroupInformation.getLoginUser().getUserName());
             AbstractWorkflowEngine wfEngine = WorkflowEngineFactory.getWorkflowEngine();
-            InstancesResult result = wfEngine.getJobDetails(cluster, workflowId);
-            Date startTime = result.getInstances()[0].startTime;
-            Date endTime = result.getInstances()[0].endTime;
+            InstancesResult.Instance result = wfEngine.getJobDetails(cluster, workflowId);
+
+            //Backward compatibility: for the old workflows where user is not set, get the user from workflow
+            if (workflowUser == null) {
+                workflowUser = result.details;
+            }
+            CurrentUser.authenticate(workflowUser);
+            Date startTime = result.startTime;
+            Date endTime = result.endTime;
             Long duration = (endTime.getTime() - startTime.getTime()) * 1000000;
 
             if (status.equalsIgnoreCase("FAILED")) {
