@@ -569,7 +569,9 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                     if (action == JobAction.PARAMS) {
                         instance.wfParams = getWFParams(jobInfo);
                     }
-                    populateInstanceActions(cluster, jobInfo, instance);
+                    if (action == JobAction.STATUS) {
+                        populateInstanceActions(cluster, jobInfo, instance);
+                    }
                 }
                 instance.details = coordinatorAction.getMissingDependencies();
                 instances.add(instance);
@@ -602,6 +604,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                 }
             } else if (!action.getType().startsWith(":")) {
                 if (PARENT_WF_ACTION_NAMES.contains(action.getName())
+                        && (StringUtils.isNotEmpty(action.getExternalId()) && !action.getExternalId().equals("-"))
                         && !Status.SUCCEEDED.toString().equals(action.getExternalStatus())) {
                     InstancesResult.InstanceAction instanceAction =
                             new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
