@@ -111,15 +111,20 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
             String status = mapMessage.getString(ARG.status.getArgName());
             String operation = mapMessage.getString(ARG.operation.getArgName());
 
-            CurrentUser.authenticate(UserGroupInformation.getLoginUser().getUserName());
             AbstractWorkflowEngine wfEngine = WorkflowEngineFactory.getWorkflowEngine();
-            InstancesResult.Instance result = wfEngine.getJobDetails(cluster, workflowId);
+            InstancesResult.Instance result;
 
-            //Backward compatibility: for the old workflows where user is not set, get the user from workflow
             if (workflowUser == null) {
+                //Backward compatibility: for the old workflows where user is not set, get the user from workflow
+                CurrentUser.authenticate(UserGroupInformation.getLoginUser().getUserName());
+                result = wfEngine.getJobDetails(cluster, workflowId);
                 workflowUser = result.details;
+                CurrentUser.authenticate(workflowUser);
+            } else {
+                CurrentUser.authenticate(workflowUser);
+                result = wfEngine.getJobDetails(cluster, workflowId);
             }
-            CurrentUser.authenticate(workflowUser);
+
             Date startTime = result.startTime;
             Date endTime = result.endTime;
             Long duration = (endTime.getTime() - startTime.getTime()) * 1000000;
