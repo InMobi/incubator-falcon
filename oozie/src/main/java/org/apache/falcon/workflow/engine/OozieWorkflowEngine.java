@@ -604,7 +604,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                 }
             } else if (!action.getType().startsWith(":")) {
                 if (PARENT_WF_ACTION_NAMES.contains(action.getName())
-                        && (StringUtils.isNotEmpty(action.getExternalId()) && !action.getExternalId().equals("-"))
+                        && !StringUtils.equals(action.getExternalId(), "-")
                         && !Status.SUCCEEDED.toString().equals(action.getExternalStatus())) {
                     InstancesResult.InstanceAction instanceAction =
                             new InstancesResult.InstanceAction(action.getName(), action.getExternalStatus(),
