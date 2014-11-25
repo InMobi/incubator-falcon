@@ -67,7 +67,7 @@ public abstract class AbstractCleanupHandler {
 
     private String getRetentionValue(Frequency.TimeUnit timeunit) {
         return RuntimeProperties.get().getProperty(
-                "log.cleanup.frequency." + timeunit + ".retention", "days(1)");
+                "log.cleanup.frequency." + timeunit + ".retention", "days(3)");
     }
 
     protected FileStatus[] getAllLogs(org.apache.falcon.entity.v0.cluster.Cluster cluster,
