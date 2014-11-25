@@ -115,7 +115,7 @@ public class FalconTopicSubscriber implements MessageListener, ExceptionListener
             InstancesResult.Instance result;
 
             if (workflowUser == null) {
-                //Backward compatibility: for the old workflows where user is not set, get the user from workflow
+                //BACKWARD COMPATIBILITY: for the old workflows where user is not set, get the user from workflow
                 CurrentUser.authenticate(UserGroupInformation.getLoginUser().getUserName());
                 result = wfEngine.getJobDetails(cluster, workflowId);
                 workflowUser = result.details;

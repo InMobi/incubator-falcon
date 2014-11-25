@@ -143,9 +143,11 @@ public class LineageRecorder  extends Configured implements Tool {
         try {
             Path lineageDataPath = new Path(lineageFile); // file has 777 permissions
             FileSystem fs = HadoopClientFactory.get().createFileSystem(lineageDataPath.toUri());
-
-            BufferedReader in = new BufferedReader(new InputStreamReader(fs.open(lineageDataPath)));
-            return (Map<String, String>) JSONValue.parse(in);
+            if (fs.exists(lineageDataPath)) {
+                BufferedReader in = new BufferedReader(new InputStreamReader(fs.open(lineageDataPath)));
+                return (Map<String, String>) JSONValue.parse(in);
+            }
+            return null;
         } catch (IOException e) {
             throw new FalconException("Error opening lineage file", e);
         }
