@@ -257,6 +257,10 @@ public class MetadataMappingService implements FalconService, ConfigurationChang
 
         LOG.info("Parsing lineage metadata from: {}", lineageFile);
         Map<String, String> lineageMetadata = LineageRecorder.parseLineageMetadata(lineageFile);
+        if (lineageMetadata == null) {
+            //BACKWARD COMPATIBILITY: No lineage data for workflows with old falcon server
+            return;
+        }
 
         EntityOperations entityOperation = EntityOperations.valueOf(operation);
 
