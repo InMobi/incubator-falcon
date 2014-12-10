@@ -258,7 +258,7 @@ public class FileSystemStorage implements Storage {
                         path.toUri(), getConf());
                 if (fileSystem.exists(path)) {
                     FileStatus fileStatus = fileSystem.getFileStatus(path);
-                    if (!fileStatus.getOwner().equals(owner)) {
+                    if (StringUtils.isNotBlank(fileStatus.getOwner()) && !fileStatus.getOwner().equals(owner)) {
                         LOG.error("Feed ACL owner {} doesn't match the actual file owner {} for location {}",
                                 owner, fileStatus.getOwner(), location.getPath());
                         throw new FalconException("Feed ACL owner " + owner + " doesn't match the actual file owner "
