@@ -26,6 +26,7 @@ Trunk (Unreleased)
    and update (Shwetha GS via Suhas Vasu)
 
   OPTIMIZATIONS
+   FALCON-943 process update copying user lib is very slow. (Shwetha GS)  
 
   BUG FIXES
    FALCON-677 Feed data and stats path defaults to /tmp/. (Suhas Vasu via Shwetha GS)

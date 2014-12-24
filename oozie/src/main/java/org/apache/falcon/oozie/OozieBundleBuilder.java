@@ -61,7 +61,8 @@ public abstract class OozieBundleBuilder<T extends Entity> extends OozieEntityBu
         super(entity);
     }
 
-    @Override public Properties build(Cluster cluster, Path buildPath) throws FalconException {
+    @Override
+    public Properties build(Cluster cluster, Path buildPath) throws FalconException {
         String clusterName = cluster.getName();
         if (EntityUtil.getStartTime(entity, clusterName).compareTo(EntityUtil.getEndTime(entity, clusterName)) >= 0) {
             LOG.info("process validity start <= end for cluster {}. Skipping schedule", clusterName);
@@ -96,6 +97,12 @@ public abstract class OozieBundleBuilder<T extends Entity> extends OozieEntityBu
         properties.setProperty(OozieClient.BUNDLE_APP_PATH, getStoragePath(buildPath));
         properties.setProperty(AbstractWorkflowEngine.NAME_NODE, ClusterHelper.getStorageUrl(cluster));
 
+        //Add libpath
+        String libPath = getLibPath(buildPath);
+        if (libPath != null) {
+            properties.put(OozieClient.LIBPATH, getStoragePath(libPath));
+        }
+
         return properties;
     }
 
@@ -122,12 +129,6 @@ public abstract class OozieBundleBuilder<T extends Entity> extends OozieEntityBu
 
         if (EntityUtil.isTableStorageType(cluster, entity)) {
             properties.putAll(getHiveCredentials(cluster));
-        }
-
-        //Add libpath
-        Path libPath = getLibPath(cluster, buildPath);
-        if (libPath != null) {
-            properties.put(OozieClient.LIBPATH, getStoragePath(libPath));
         }
 
         return properties;
@@ -176,4 +177,6 @@ public abstract class OozieBundleBuilder<T extends Entity> extends OozieEntityBu
             IOUtils.closeQuietly(resourceAsStream);
         }
     }
+
+    public abstract String getLibPath(Path buildPath);
 }

@@ -126,6 +126,11 @@
             <source>hadoop-webapp/target/oozie/WEB-INF/lib/s4fs-0.1.jar</source>
             <outputDirectory>libext</outputDirectory>
         </file>
+
+        <file>
+            <source>oozie-el-extensions/src/main/conf/oozie-site.xml</source>
+            <outputDirectory>oozie/conf</outputDirectory>
+        </file>
     </files>
 </assembly>
     

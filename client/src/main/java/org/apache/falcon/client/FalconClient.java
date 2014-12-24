@@ -290,14 +290,11 @@ public class FalconClient {
                 entityStream, null);
     }
 
-    public String update(String entityType, String entityName, String filePath, Date effectiveTime)
+    public String update(String entityType, String entityName, String filePath)
         throws FalconCLIException {
         InputStream entityStream = getServletInputStream(filePath);
         Entities operation = Entities.UPDATE;
         WebResource resource = service.path(operation.path).path(entityType).path(entityName);
-        if (effectiveTime != null) {
-            resource = resource.queryParam("effective", SchemaHelper.formatDateUTC(effectiveTime));
-        }
         ClientResponse clientResponse = resource
                 .header("Cookie", AUTH_COOKIE_EQ + authenticationToken)
                 .accept(operation.mimeType).type(MediaType.TEXT_XML)
