@@ -93,6 +93,18 @@
                                     </sources>
                                 </configuration>
                             </execution>
+                            <execution>
+                                <id>add-test-source</id>
+                                <phase>generate-test-sources</phase>
+                                <goals>
+                                    <goal>add-test-source</goal>
+                                </goals>
+                                <configuration>
+                                    <sources>
+                                        <source>${project.basedir}/src/versioned-src/v2/test</source>
+                                    </sources>
+                                </configuration>
+                            </execution>
                         </executions>
                     </plugin>
                 </plugins>
@@ -119,6 +131,12 @@
         <dependency>
             <groupId>org.apache.falcon</groupId>
             <artifactId>falcon-test-util</artifactId>
+            <exclusions>
+                <exclusion>
+                   <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-core</artifactId>
+                </exclusion>
+            </exclusions>
             <scope>test</scope>
         </dependency>
 

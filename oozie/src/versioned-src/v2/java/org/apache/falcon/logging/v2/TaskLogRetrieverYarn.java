@@ -1,3 +1,21 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.falcon.logging.v2;
 
 import org.apache.falcon.logging.DefaultTaskLogRetriever;
@@ -19,36 +37,44 @@ import java.util.List;
  */
 public class TaskLogRetrieverYarn extends DefaultTaskLogRetriever {
     private static final Logger LOG = LoggerFactory.getLogger(TaskLogRetrieverYarn.class);
-    private static final String SCHEME = "http://";
-    private static final String YARN_LOG_SERVER_URL = "yarn.log.server.url";
+    protected static final String SCHEME = "http://";
+    protected static final String YARN_LOG_SERVER_URL = "yarn.log.server.url";
 
     @Override
-    public List<String> retrieveTaskLogURL(String jobIdStr) throws IOException, InterruptedException {
+    public List<String> retrieveTaskLogURL(String jobIdStr) throws IOException {
         List<String> taskLogUrls = new ArrayList<String>();
         Configuration conf = getConf();
-        Cluster cluster = new Cluster(conf);
+        Cluster cluster = getCluster(conf);
         JobID jobID = JobID.forName(jobIdStr);
         if (jobID == null) {
             LOG.warn("External id for workflow action is null");
             return null;
         }
-        Job job = cluster.getJob(jobID);
-        if (job != null) {
-            TaskCompletionEvent[] events = job.getTaskCompletionEvents(0);
-            for (TaskCompletionEvent event : events) {
-                LogParams params = cluster.getLogParams(jobID, event.getTaskAttemptId());
-                String url = SCHEME + conf.get(YARN_LOG_SERVER_URL) + "/"
-                        + event.getTaskTrackerHttp() + "/"
-                        + params.getContainerId() + "/"
-                        + params.getApplicationId() + "/"
-                        + params.getOwner() + "?start=0";
-                LOG.info("Task Log URL for the job {} is {}" + jobIdStr, url);
-                taskLogUrls.add(url);
+        try {
+            Job job = cluster.getJob(jobID);
+            if (job != null) {
+                TaskCompletionEvent[] events = job.getTaskCompletionEvents(0);
+                for (TaskCompletionEvent event : events) {
+                    LogParams params = cluster.getLogParams(jobID, event.getTaskAttemptId());
+                    String url = SCHEME + conf.get(YARN_LOG_SERVER_URL) + "/"
+                            + event.getTaskTrackerHttp() + "/"
+                            + params.getContainerId() + "/"
+                            + params.getApplicationId() + "/"
+                            + params.getOwner() + "?start=0";
+                    LOG.info("Task Log URL for the job {} is {}" + jobIdStr, url);
+                    taskLogUrls.add(url);
+                }
+                return taskLogUrls;
             }
-            return taskLogUrls;
+            LOG.warn("Unable to find the job in cluster {}" + jobIdStr);
+            return null;
+        } catch (InterruptedException e) {
+            throw new IOException(e);
         }
-        LOG.warn("Unable to find the job in cluster {}" + jobIdStr);
-        return null;
+    }
+
+    protected Cluster getCluster(Configuration conf) throws IOException {
+        return new Cluster(conf);
     }
 
 }

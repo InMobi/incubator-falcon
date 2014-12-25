@@ -39,7 +39,7 @@ public class DefaultTaskLogRetriever extends Configured implements TaskLogURLRet
     private static final Logger LOG = LoggerFactory.getLogger(DefaultTaskLogRetriever.class);
 
     @Override
-    public List<String> retrieveTaskLogURL(String jobId) throws IOException, InterruptedException {
+    public List<String> retrieveTaskLogURL(String jobId) throws IOException {
         JobConf jobConf = new JobConf(getConf());
         JobClient jobClient = new JobClient(jobConf);
 
