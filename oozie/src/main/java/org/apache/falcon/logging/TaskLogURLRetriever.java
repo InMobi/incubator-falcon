@@ -28,5 +28,5 @@ import java.util.List;
  */
 public interface TaskLogURLRetriever extends Configurable {
 
-    List<String> retrieveTaskLogURL(String jobId) throws IOException, InterruptedException;
+    List<String> retrieveTaskLogURL(String jobId) throws IOException;
 }

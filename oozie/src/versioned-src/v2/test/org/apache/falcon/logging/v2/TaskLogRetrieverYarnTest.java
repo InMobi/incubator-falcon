@@ -38,6 +38,10 @@ import java.util.Random;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+/**
+ * Hadoop yarn task log retriever test
+ */
+
 public class TaskLogRetrieverYarnTest extends TaskLogRetrieverYarn {
 
     private Cluster mockcluster;
