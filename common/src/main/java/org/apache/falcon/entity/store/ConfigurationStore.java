@@ -20,6 +20,7 @@ package org.apache.falcon.entity.store;
 
 import org.apache.commons.codec.CharEncoding;
 import org.apache.falcon.FalconException;
+import org.apache.falcon.entity.lock.MemoryLocks;
 import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.EntityType;
 import org.apache.falcon.hadoop.HadoopClientFactory;
@@ -70,6 +71,8 @@ public final class ConfigurationStore implements FalconService {
 
     private final Map<EntityType, ConcurrentHashMap<String, Entity>> dictionary
         = new HashMap<EntityType, ConcurrentHashMap<String, Entity>>();
+
+    private MemoryLocks locks = new MemoryLocks();
 
     private final FileSystem fs;
     private final Path storePath;
@@ -363,6 +366,22 @@ public final class ConfigurationStore implements FalconService {
     public void cleanupUpdateInit() {
         updatesInProgress.set(null);
     }
+
+    public MemoryLocks.LockToken getUpdateLock(Entity entity) throws InterruptedException {
+        String lockKey = entity.getEntityType().toString() + "." + entity.getName();
+        return locks.getLock(lockKey);
+    }
+
+    public void releaseUpdateLock(MemoryLocks.LockToken lockToken) {
+        if (lockToken != null) {
+            LOG.info("Releasing update lock for entity " + lockToken.getEntityName());
+            lockToken.release();
+        } else {
+            LOG.info("No update lock to be released");
+        }
+
+    }
+
 
     @Override
     public String getName() {
