@@ -24,7 +24,6 @@ import org.apache.falcon.FalconException;
 import org.apache.falcon.entity.CatalogStorage;
 import org.apache.falcon.entity.ClusterHelper;
 import org.apache.falcon.entity.EntityUtil;
-import org.apache.falcon.entity.ProcessHelper;
 import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.cluster.Cluster;
 import org.apache.falcon.entity.v0.cluster.Property;
@@ -76,7 +75,11 @@ public abstract class OozieEntityBuilder<T extends Entity> {
     private static final FalconPathFilter FALCON_JAR_FILTER = new FalconPathFilter() {
         @Override
         public boolean accept(Path path) {
-            return path.getName().startsWith("falcon");
+            String fileName = path.getName();
+            if (fileName.startsWith("falcon")) {
+                return true;
+            }
+            return false;
         }
 
         @Override
@@ -115,12 +118,12 @@ public abstract class OozieEntityBuilder<T extends Entity> {
     }
 
     public static OozieEntityBuilder get(Entity entity) {
-        switch(entity.getEntityType()) {
+        switch (entity.getEntityType()) {
         case FEED:
             return new FeedBundleBuilder((Feed) entity);
 
         case PROCESS:
-            return new ProcessBundleBuilder((Process)entity);
+            return new ProcessBundleBuilder((Process) entity);
 
         default:
         }
@@ -141,7 +144,7 @@ public abstract class OozieEntityBuilder<T extends Entity> {
             }
 
             FileSystem fs = HadoopClientFactory.get().createFileSystem(
-                outPath.toUri(), ClusterHelper.getConfiguration(cluster));
+                    outPath.toUri(), ClusterHelper.getConfiguration(cluster));
             OutputStream out = fs.create(outPath);
             try {
                 marshaller.marshal(jaxbElement, out);
@@ -160,7 +163,7 @@ public abstract class OozieEntityBuilder<T extends Entity> {
         String metaStoreUrl = ClusterHelper.getRegistryEndPoint(cluster);
         if (metaStoreUrl == null) {
             throw new IllegalStateException(
-                "Registry interface is not defined in cluster: " + cluster.getName());
+                    "Registry interface is not defined in cluster: " + cluster.getName());
         }
 
         Properties hiveCredentials = new Properties();
@@ -171,7 +174,7 @@ public abstract class OozieEntityBuilder<T extends Entity> {
 
         if (isSecurityEnabled) {
             String principal = ClusterHelper
-                .getPropertyValue(cluster, SecurityUtil.HIVE_METASTORE_PRINCIPAL);
+                    .getPropertyValue(cluster, SecurityUtil.HIVE_METASTORE_PRINCIPAL);
             hiveCredentials.put(METASTORE_KERBEROS_PRINCIPAL, principal);
             hiveCredentials.put(METASTORE_USE_THRIFT_SASL, "true");
             hiveCredentials.put("hcat.metastore.principal", principal);
@@ -185,7 +188,7 @@ public abstract class OozieEntityBuilder<T extends Entity> {
 
         Configuration hiveConf = new Configuration(false);
         for (Entry<Object, Object> entry : hiveCredentials.entrySet()) {
-            hiveConf.set((String)entry.getKey(), (String)entry.getValue());
+            hiveConf.set((String) entry.getKey(), (String) entry.getValue());
         }
 
         return hiveConf;
@@ -234,9 +237,9 @@ public abstract class OozieEntityBuilder<T extends Entity> {
 
         //pig and java actions require partition expression as "key1=val1, key2=val2"
         props.put(prefix + "_partitions_pig",
-            "${coord:dataOutPartitions('" + output.getName() + "')}");
+                "${coord:dataOutPartitions('" + output.getName() + "')}");
         props.put(prefix + "_partitions_java",
-            "${coord:dataOutPartitions('" + output.getName() + "')}");
+                "${coord:dataOutPartitions('" + output.getName() + "')}");
 
         //hive requires partition expression as "key1='val1', key2='val2'" (with quotes around values)
         //there is no direct EL expression in oozie
@@ -244,7 +247,7 @@ public abstract class OozieEntityBuilder<T extends Entity> {
         for (String key : tableStorage.getDatedPartitionKeys()) {
             StringBuilder expr = new StringBuilder();
             expr.append("${coord:dataOutPartitionValue('").append(output.getName()).append("', '").append(key)
-                .append("')}");
+                    .append("')}");
             props.put(prefix + "_dated_partition_value_" + key, expr.toString());
             partitions.add(key + "='" + expr + "'");
 
@@ -262,7 +265,7 @@ public abstract class OozieEntityBuilder<T extends Entity> {
     protected void copySharedLibs(Cluster cluster, Path libPath) throws FalconException {
         try {
             SharedLibraryHostingService.pushLibsToHDFS(StartupProperties.get().getProperty("system.lib.location"),
-                libPath, cluster, FALCON_JAR_FILTER);
+                    libPath, cluster, FALCON_JAR_FILTER);
         } catch (IOException e) {
             throw new FalconException("Failed to copy shared libs on cluster " + cluster.getName(), e);
         }
@@ -297,18 +300,4 @@ public abstract class OozieEntityBuilder<T extends Entity> {
             IOUtils.closeQuietly(resourceAsStream);
         }
     }
-
-    protected Path getLibPath(Cluster cluster, Path buildPath) throws FalconException {
-        switch (entity.getEntityType()) {
-        case PROCESS:
-            return ProcessHelper.getUserLibPath((Process) entity, cluster, buildPath);
-
-        case FEED:
-            return new Path(buildPath, "lib");
-
-        default:
-        }
-        throw new IllegalArgumentException("Unhandled type " + entity.getEntityType());
-    }
-
 }

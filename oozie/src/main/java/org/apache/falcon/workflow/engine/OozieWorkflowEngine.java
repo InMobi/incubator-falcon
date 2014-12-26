@@ -378,10 +378,6 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
                 LOG.debug("Killed coord {} on cluster {}", coord.getId(), clusterName);
             }
 
-            //set end time of bundle
-            client.change(job.getId(), OozieClient.CHANGE_VALUE_ENDTIME + "=" + SchemaHelper.formatDateUTC(new Date()));
-            LOG.debug("Changed end time of bundle {} on cluster {}", job.getId(), clusterName);
-
             //kill bundle
             client.kill(job.getId());
             LOG.debug("Killed bundle {} on cluster {}", job.getId(), clusterName);
@@ -997,26 +993,23 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
     }
 
 
-    private boolean canUpdateBundle(Entity oldEntity, Entity newEntity, boolean wfUpdated) throws FalconException {
-        return !wfUpdated && EntityUtil.equals(oldEntity, newEntity, BUNDLE_UPDATEABLE_PROPS);
+    private boolean canUpdateBundle(Entity oldEntity, Entity newEntity) throws FalconException {
+        return EntityUtil.equals(oldEntity, newEntity, BUNDLE_UPDATEABLE_PROPS);
     }
 
     @Override
-    public String update(Entity oldEntity, Entity newEntity, String cluster, Date effectiveTime)
-        throws FalconException {
+    public String update(Entity oldEntity, Entity newEntity, String cluster) throws FalconException {
         BundleJob bundle = findLatestBundle(oldEntity, cluster);
 
         boolean entityUpdated = false;
-        boolean wfUpdated = false;
         if (bundle != MISSING) {
             entityUpdated = UpdateHelper.isEntityUpdated(oldEntity, newEntity, cluster, new Path(bundle.getAppPath()));
-            wfUpdated = UpdateHelper.isWorkflowUpdated(cluster, newEntity, new Path(bundle.getAppPath()));
         }
 
         Cluster clusterEntity = ConfigurationStore.get().get(EntityType.CLUSTER, cluster);
         StringBuilder result = new StringBuilder();
-        //entity is scheduled before and either entity or workflow is updated
-        if (bundle != MISSING && (entityUpdated || wfUpdated)) {
+        //entity is scheduled before and entity is updated
+        if (bundle != MISSING && entityUpdated) {
             LOG.info("Updating entity through Workflow Engine {}", newEntity.toShortString());
             Date newEndTime = EntityUtil.getEndTime(newEntity, cluster);
             if (newEndTime.before(now())) {
@@ -1026,7 +1019,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
 
             LOG.debug("Updating for cluster: {}, bundle: {}", cluster, bundle.getId());
 
-            if (canUpdateBundle(oldEntity, newEntity, wfUpdated)) {
+            if (canUpdateBundle(oldEntity, newEntity)) {
                 // only concurrency and endtime are changed. So, change coords
                 LOG.info("Change operation is adequate! : {}, bundle: {}", cluster, bundle.getId());
                 updateCoords(cluster, bundle, EntityUtil.getParallel(newEntity),
@@ -1036,20 +1029,20 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
 
             LOG.debug("Going to update! : {} for cluster {}, bundle: {}", newEntity.toShortString(), cluster, bundle
                 .getId());
-            result.append(updateInternal(oldEntity, newEntity, clusterEntity, bundle, effectiveTime,
-                CurrentUser.getUser())).append("\n");
+            result.append(updateInternal(oldEntity, newEntity, clusterEntity, bundle,
+                    CurrentUser.getUser())).append("\n");
             LOG.info("Entity update complete: {} for cluster {}, bundle: {}", newEntity.toShortString(), cluster,
                 bundle.getId());
         }
 
-        result.append(updateDependents(clusterEntity, oldEntity, newEntity, effectiveTime));
+        result.append(updateDependents(clusterEntity, oldEntity, newEntity));
         return result.toString();
     }
 
     private String getUpdateString(Entity entity, Date date, BundleJob oldBundle, BundleJob newBundle) {
         StringBuilder builder = new StringBuilder();
         builder.append(entity.toShortString()).append("/Effective Time: ").append(SchemaHelper.formatDateUTC(date));
-        builder.append(". Old workflow id: ");
+        builder.append(". Old coordinator id: ");
         List<String> coords = new ArrayList<String>();
         for (CoordinatorJob coord : oldBundle.getCoordinators()) {
             coords.add(coord.getId());
@@ -1057,22 +1050,22 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         builder.append(StringUtils.join(coords, ','));
 
         if (newBundle != null) {
-            builder.append(". New workflow id: ");
             coords.clear();
             for (CoordinatorJob coord : newBundle.getCoordinators()) {
                 coords.add(coord.getId());
             }
             if (coords.isEmpty()) {
+                builder.append(". New bundle id: ");
                 builder.append(newBundle.getId());
             } else {
+                builder.append(". New coordinator id: ");
                 builder.append(StringUtils.join(coords, ','));
             }
         }
         return  builder.toString();
     }
 
-    private String updateDependents(Cluster cluster, Entity oldEntity, Entity newEntity,
-        Date effectiveTime) throws FalconException {
+    private String updateDependents(Cluster cluster, Entity oldEntity, Entity newEntity) throws FalconException {
         //Update affected entities
         Set<Entity> affectedEntities = EntityGraph.get().getDependents(oldEntity);
         StringBuilder result = new StringBuilder();
@@ -1095,7 +1088,7 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
             LOG.info("Triggering update for {}, {}", cluster, affectedProcBundle.getId());
 
             result.append(updateInternal(affectedEntity, affectedEntity, cluster, affectedProcBundle,
-                effectiveTime, affectedProcBundle.getUser())).append("\n");
+                affectedProcBundle.getUser())).append("\n");
             LOG.info("Entity update complete: {} for cluster {}, bundle: {}",
                 affectedEntity.toShortString(), cluster, affectedProcBundle.getId());
         }
@@ -1164,10 +1157,10 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
     }
 
     private String updateInternal(Entity oldEntity, Entity newEntity, Cluster cluster, BundleJob oldBundle,
-        Date inEffectiveTime, String user) throws FalconException {
+        String user) throws FalconException {
         String clusterName = cluster.getName();
 
-        Date effectiveTime = getEffectiveTime(cluster, newEntity, inEffectiveTime);
+        Date effectiveTime = getEffectiveTime(cluster, newEntity);
         LOG.info("Effective time " + effectiveTime);
 
         //Validate that new entity can be scheduled
@@ -1194,15 +1187,10 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
         return getUpdateString(newEntity, effectiveTime, oldBundle, newBundle);
     }
 
-    private Date getEffectiveTime(Cluster cluster, Entity newEntity, Date inEffectiveTime) {
+    private Date getEffectiveTime(Cluster cluster, Entity newEntity) {
         //pick effective time as now() + 3 min to handle any time diff between falcon and oozie
         //oozie rejects changes with endtime < now
         Date effectiveTime = offsetTime(now(), 3);
-        if (inEffectiveTime != null && inEffectiveTime.after(effectiveTime)) {
-            //If the user has specified effective time and is valid,
-            // pick user specified effective time
-            effectiveTime = inEffectiveTime;
-        }
 
         //pick start time for new bundle which is after effectiveTime
         return EntityUtil.getNextStartTime(newEntity, cluster, effectiveTime);

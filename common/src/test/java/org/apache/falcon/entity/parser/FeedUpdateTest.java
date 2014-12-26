@@ -61,6 +61,7 @@ public class FeedUpdateTest extends AbstractTestBase {
         storeEntity(EntityType.CLUSTER, "backupCluster");
         storeEntity(EntityType.CLUSTER, "corp");
         storeEntity(EntityType.FEED, "impressions");
+        this.dfsCluster.getFileSystem().delete(new Path("/projects/falcon/clicks"), true);
     }
 
     @Test

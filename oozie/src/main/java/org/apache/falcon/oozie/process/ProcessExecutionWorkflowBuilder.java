@@ -18,6 +18,7 @@
 
 package org.apache.falcon.oozie.process;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.falcon.FalconException;
 import org.apache.falcon.Tag;
 import org.apache.falcon.entity.CatalogStorage;
@@ -214,12 +215,13 @@ public abstract class ProcessExecutionWorkflowBuilder extends OozieOrchestration
         return deleteList;
     }
 
-    protected void addArchiveForCustomJars(Cluster cluster, List<String> archiveList,
-        Path libPath) throws FalconException {
-        if (libPath == null) {
+    protected void addArchiveForCustomJars(Cluster cluster, List<String> archiveList, String lib)
+        throws FalconException {
+        if (StringUtils.isEmpty(lib)) {
             return;
         }
 
+        Path libPath = new Path(lib);
         try {
             final FileSystem fs = libPath.getFileSystem(ClusterHelper.getConfiguration(cluster));
             if (fs.isFile(libPath)) {  // File, not a Dir

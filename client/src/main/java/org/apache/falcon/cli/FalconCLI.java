@@ -28,18 +28,16 @@ import org.apache.commons.io.IOUtils;
 import org.apache.falcon.LifeCycle;
 import org.apache.falcon.client.FalconCLIException;
 import org.apache.falcon.client.FalconClient;
-import org.apache.falcon.entity.v0.SchemaHelper;
 import org.apache.falcon.resource.EntityList;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.List;
-import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -81,7 +79,6 @@ public class FalconCLI {
     public static final String INSTANCE_CMD = "instance";
     public static final String START_OPT = "start";
     public static final String END_OPT = "end";
-    public static final String EFFECTIVE_OPT = "effective";
     public static final String RUNNING_OPT = "running";
     public static final String KILL_OPT = "kill";
     public static final String RERUN_OPT = "rerun";
@@ -308,7 +305,6 @@ public class FalconCLI {
         String entityName = commandLine.getOptionValue(ENTITY_NAME_OPT);
         String filePath = commandLine.getOptionValue(FILE_PATH_OPT);
         String colo = commandLine.getOptionValue(COLO_OPT);
-        String time = commandLine.getOptionValue(EFFECTIVE_OPT);
 
         validateEntityType(entityType);
 
@@ -320,8 +316,7 @@ public class FalconCLI {
             validateFilePath(filePath);
             validateColo(optionsList);
             validateEntityName(entityName);
-            Date effectiveTime = validateTime(time);
-            result = client.update(entityType, entityName, filePath, effectiveTime);
+            result = client.update(entityType, entityName, filePath);
         } else if (optionsList.contains(SUBMIT_AND_SCHEDULE_OPT)) {
             validateFilePath(filePath);
             validateColo(optionsList);
@@ -392,17 +387,6 @@ public class FalconCLI {
         if (optionsList.contains(COLO_OPT)) {
             throw new FalconCLIException("Invalid argument : " + COLO_OPT);
         }
-    }
-
-    private Date validateTime(String time) throws FalconCLIException {
-        if (time != null && !time.isEmpty()) {
-            try {
-                return SchemaHelper.parseDateUTC(time);
-            } catch(Exception e) {
-                throw new FalconCLIException("Time " + time + " is not valid", e);
-            }
-        }
-        return null;
     }
 
     private void validateEntityName(String entityName)
@@ -497,7 +481,6 @@ public class FalconCLI {
         Option colo = new Option(COLO_OPT, true,
                 "Colo name");
         colo.setRequired(false);
-        Option effective = new Option(EFFECTIVE_OPT, true, "Effective time for update");
 
         entityOptions.addOption(url);
         entityOptions.addOptionGroup(group);
@@ -505,7 +488,6 @@ public class FalconCLI {
         entityOptions.addOption(entityName);
         entityOptions.addOption(filePath);
         entityOptions.addOption(colo);
-        entityOptions.addOption(effective);
 
         return entityOptions;
     }
