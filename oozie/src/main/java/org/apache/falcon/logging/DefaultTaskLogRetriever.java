@@ -52,7 +52,7 @@ public class DefaultTaskLogRetriever extends Configured implements TaskLogURLRet
         TaskCompletionEvent[] tasks = job.getTaskCompletionEvents(0);
         // 0th even is setup, 1 event is launcher, 2 event is cleanup
         if (tasks != null && tasks.length == 3 && tasks[1] != null) {
-             taskLogUrls.add(tasks[1].getTaskTrackerHttp() + "/tasklog?attemptid="
+            taskLogUrls.add(tasks[1].getTaskTrackerHttp() + "/tasklog?attemptid="
                      + tasks[1].getTaskAttemptId() + "&all=true");
             return taskLogUrls;
         } else {
