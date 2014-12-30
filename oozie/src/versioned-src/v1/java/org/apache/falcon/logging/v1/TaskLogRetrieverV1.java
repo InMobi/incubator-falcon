@@ -32,18 +32,21 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
- * Hadoop v1 task log retriever based on job history
- */
+* Hadoop v1 task log retriever based on job history
+*/
 public final class TaskLogRetrieverV1 extends DefaultTaskLogRetriever {
     private static final Logger LOG = LoggerFactory.getLogger(TaskLogRetrieverV1.class);
 
     @Override
-    public String getFromHistory(String jobId) throws IOException {
+    public List<String> getFromHistory(String jobId) throws IOException {
         Configuration conf = getConf();
         String file = getHistoryFile(conf, jobId);
         if (file == null) return null;
+        List<String> taskLogUrls = new ArrayList<String>();
         JobHistory.JobInfo jobInfo = new JobHistory.JobInfo(jobId);
         DefaultJobHistoryParser.parseJobTasks(file, jobInfo, new Path(file).getFileSystem(conf));
         LOG.info("History file: {}", file);
@@ -53,7 +56,7 @@ public final class TaskLogRetrieverV1 extends DefaultTaskLogRetriever {
                     task.get(JobHistory.Keys.TASK_STATUS).equals(JobHistory.Values.SUCCESS.name())) {
                 for (JobHistory.TaskAttempt attempt : task.getTaskAttempts().values()) {
                     if (attempt.get(JobHistory.Keys.TASK_STATUS).equals(JobHistory.Values.SUCCESS.name())) {
-                        return JobHistory.getTaskLogsUrl(attempt);
+                        taskLogUrls.add(JobHistory.getTaskLogsUrl(attempt));
                     }
                 }
             }
