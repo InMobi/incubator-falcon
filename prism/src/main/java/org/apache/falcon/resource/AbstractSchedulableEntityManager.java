@@ -30,8 +30,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.PathParam;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
+import java.util.Set;
 
 /**
  * REST resource of allowed actions on Schedulable Entities, Only Process and
@@ -147,6 +149,31 @@ public abstract class AbstractSchedulableEntityManager extends AbstractEntityMan
             LOG.error("Unable to resume entity", e);
             throw FalconWebException.newException(e, Response.Status.BAD_REQUEST);
         }
+    }
+
+    /**
+     * Force updates an entity.
+     *
+     * @param type
+     * @param entityName
+     * @return APIResult
+     */
+    public APIResult touch(@Dimension("entityType") @PathParam("type") String type,
+                           @Dimension("entityName") @PathParam("entity") String entityName,
+                           @Dimension("colo") @QueryParam("colo") String colo) {
+        checkColo(colo);
+        StringBuilder result = new StringBuilder();
+        try {
+            Entity entity = EntityUtil.getEntity(type, entityName);
+            Set<String> clusters = EntityUtil.getClustersDefinedInColos(entity);
+            for (String cluster : clusters) {
+                result.append(getWorkflowEngine().touch(entity, cluster));
+            }
+        } catch (Throwable e) {
+            LOG.error("Touch failed", e);
+            throw FalconWebException.newException(e, Response.Status.BAD_REQUEST);
+        }
+        return new APIResult(APIResult.Status.SUCCEEDED, result.toString());
     }
 
     private void checkSchedulableEntity(String type) throws UnschedulableEntityException {

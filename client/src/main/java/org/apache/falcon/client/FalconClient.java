@@ -334,7 +334,7 @@ public class FalconClient {
         return sendListRequest(Entities.LIST, entityType);
     }
 
-    public String getTouch(String entityType, String entityName, String colo) throws FalconCLIException {
+    public String touch(String entityType, String entityName, String colo) throws FalconCLIException {
         Entities operation = Entities.TOUCH;
         WebResource resource = service.path(operation.path).path(entityType).path(entityName);
         if (colo != null) {

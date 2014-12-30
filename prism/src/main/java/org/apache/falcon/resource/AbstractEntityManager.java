@@ -98,10 +98,15 @@ public abstract class AbstractEntityManager {
 
     protected Set<String> getColosFromExpression(String coloExpr, String type, String entity) {
         Set<String> colos;
+        final Set<String> applicableColos = getApplicableColos(type, entity);
         if (coloExpr == null || coloExpr.equals("*") || coloExpr.isEmpty()) {
-            colos = getApplicableColos(type, entity);
+            colos = applicableColos;
         } else {
             colos = new HashSet<String>(Arrays.asList(coloExpr.split(",")));
+            if (!applicableColos.containsAll(colos)) {
+                throw FalconWebException.newException("Given colos not applicable for entity operation",
+                        Response.Status.BAD_REQUEST);
+            }
         }
         return colos;
     }
@@ -278,22 +283,6 @@ public abstract class AbstractEntityManager {
         } finally {
             ConfigurationStore.get().cleanupUpdateInit();
         }
-    }
-
-    public synchronized APIResult touch(String type, String entityName, String colo) throws FalconException {
-        checkColo(colo);
-        StringBuilder result = new StringBuilder();
-        try {
-            Entity entity = EntityUtil.getEntity(type, entityName);
-            Set<String> clusters = EntityUtil.getClustersDefinedInColos(entity);
-            for (String cluster : clusters) {
-                result.append(getWorkflowEngine().touch(entity, cluster));
-            }
-        } catch (Throwable e) {
-            LOG.error("Touch failed", e);
-            throw FalconWebException.newException(e, Response.Status.BAD_REQUEST);
-        }
-        return new APIResult(APIResult.Status.SUCCEEDED, result.toString());
     }
 
     private void validateUpdate(Entity oldEntity, Entity newEntity) throws FalconException {

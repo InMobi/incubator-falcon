@@ -1051,7 +1051,6 @@ public class OozieWorkflowEngine extends AbstractWorkflowEngine {
             LOG.info("Entity update complete: {} for cluster {}, bundle: {}", entity.toShortString(), cluster,
                     bundle.getId());
         }
-        result.append(updateDependents(clusterEntity, entity, entity));
         return result.toString();
     }
 

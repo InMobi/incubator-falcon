@@ -361,7 +361,7 @@ public class FalconCLI {
         } else if (optionsList.contains(TOUCH_OPT)) {
             validateEntityName(entityName);
             colo = getColo(colo);
-            result = client.getTouch(entityType, entityName, colo);
+            result = client.touch(entityType, entityName, colo);
         } else if (optionsList.contains(HELP_CMD)) {
             OUT.get().println("Falcon Help");
         } else {
@@ -461,7 +461,7 @@ public class FalconCLI {
         Option list = new Option(LIST_OPT, false,
                 "List entities registerd for a type");
         Option touch = new Option(TOUCH_OPT, false,
-                "Updates an entity for the given colo's forcefully");
+                "Force update the entity in workflow engine(even without any changes to entity)");
 
         OptionGroup group = new OptionGroup();
         group.addOption(submit);
