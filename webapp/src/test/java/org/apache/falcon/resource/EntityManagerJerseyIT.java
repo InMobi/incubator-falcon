@@ -759,42 +759,4 @@ public class EntityManagerJerseyIT {
         cal.set(Calendar.MILLISECOND, 0);
         return cal.getTime();
     }
-
-    @Test
-    public void testMultipleUpdateCommands() throws Exception {
-        //schedule a process
-        TestContext context = newContext();
-        context.scheduleProcess();
-        OozieTestUtils.waitForBundleStart(context, Job.Status.RUNNING);
-
-        List<BundleJob> bundles = OozieTestUtils.getBundles(context);
-        Assert.assertEquals(bundles.size(), 1);
-
-        //update process should create new bundle
-        Process process = (Process) getDefinition(context, EntityType.PROCESS, context.processName);
-
-        String feed3 = "f3" + System.currentTimeMillis();
-        Map<String, String> overlay = new HashMap<String, String>();
-        overlay.put("inputFeedName", feed3);
-        overlay.put("cluster", context.clusterName);
-        overlay.put("user", System.getProperty("user.name"));
-        ClientResponse response = context.submitToFalcon(TestContext.FEED_TEMPLATE1, overlay, EntityType.FEED);
-        context.assertSuccessful(response);
-
-        Input input = new Input();
-        input.setFeed(feed3);
-        input.setName("inputData2");
-        input.setStart("today(20,0)");
-        input.setEnd("today(20,20)");
-        process.getInputs().getInputs().add(input);
-
-        updateEndtime(process);
-        response = update(context, process, null);
-        //issuing second update command
-        ClientResponse duplicateUpdateCommandResponse = update(context, process, null);
-        context.assertSuccessful(response);
-        context.assertSuccessful(duplicateUpdateCommandResponse);
-        bundles = OozieTestUtils.getBundles(context);
-        Assert.assertEquals(bundles.size(), 2);
-    }
 }

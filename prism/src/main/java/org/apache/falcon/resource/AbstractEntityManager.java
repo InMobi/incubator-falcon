@@ -26,7 +26,6 @@ import org.apache.falcon.FalconWebException;
 import org.apache.falcon.Pair;
 import org.apache.falcon.entity.EntityNotRegisteredException;
 import org.apache.falcon.entity.EntityUtil;
-import org.apache.falcon.entity.lock.MemoryLocks;
 import org.apache.falcon.entity.parser.EntityParser;
 import org.apache.falcon.entity.parser.EntityParserFactory;
 import org.apache.falcon.entity.parser.ValidationException;
@@ -244,7 +243,6 @@ public abstract class AbstractEntityManager {
     // are referred by a single process. Sequencing them.
     public synchronized APIResult update(HttpServletRequest request, String type, String entityName, String colo) {
         checkColo(colo);
-        MemoryLocks.LockToken lockToken = null;
         try {
             EntityType entityType = EntityType.valueOf(type.toUpperCase());
             audit(request, entityName, type, "UPDATE");
@@ -254,10 +252,6 @@ public abstract class AbstractEntityManager {
 
             validateUpdate(oldEntity, newEntity);
             configStore.initiateUpdate(newEntity);
-            lockToken = configStore.getUpdateLock(newEntity);
-            if (lockToken == null) {
-                throw new FalconException("An update command is already issued for entity " + newEntity.getName());
-            }
 
             StringBuilder result = new StringBuilder("Updated successfully");
             //Update in workflow engine
@@ -283,7 +277,6 @@ public abstract class AbstractEntityManager {
             throw FalconWebException.newException(e, Response.Status.BAD_REQUEST);
         } finally {
             ConfigurationStore.get().cleanupUpdateInit();
-            ConfigurationStore.get().releaseUpdateLock(lockToken);
         }
     }
 
