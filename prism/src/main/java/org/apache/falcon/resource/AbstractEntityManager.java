@@ -280,6 +280,22 @@ public abstract class AbstractEntityManager {
         }
     }
 
+    public synchronized APIResult touch(String type, String entityName, String colo) throws FalconException {
+        checkColo(colo);
+        StringBuilder result = new StringBuilder();
+        try {
+            Entity entity = EntityUtil.getEntity(type, entityName);
+            Set<String> clusters = EntityUtil.getClustersDefinedInColos(entity);
+            for (String cluster : clusters) {
+                result.append(getWorkflowEngine().touch(entity, cluster));
+            }
+        } catch (Throwable e) {
+            LOG.error("Touch failed", e);
+            throw FalconWebException.newException(e, Response.Status.BAD_REQUEST);
+        }
+        return new APIResult(APIResult.Status.SUCCEEDED, result.toString());
+    }
+
     private void validateUpdate(Entity oldEntity, Entity newEntity) throws FalconException {
         if (oldEntity.getEntityType() != newEntity.getEntityType() || !oldEntity.equals(newEntity)) {
             throw new FalconException(

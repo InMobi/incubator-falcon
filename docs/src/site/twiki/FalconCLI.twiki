@@ -59,6 +59,13 @@ not allowed.
 Usage:
 $FALCON_HOME/bin/falcon entity  -type [feed|process] -name <<name>> -update -file <entity definition file>
 
+---+++Touch
+
+Force Update operation allows an already submitted/scheduled entity to be updated.
+
+Usage:
+$FALCON_HOME/bin/falcon entity  -type [feed|process] -name <<name>> -touch
+
 ---+++Status
 
 Status returns the current status of the entity.

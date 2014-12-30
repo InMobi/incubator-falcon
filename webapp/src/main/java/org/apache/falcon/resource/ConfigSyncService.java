@@ -67,4 +67,15 @@ public class ConfigSyncService extends AbstractEntityManager {
                             @Dimension("colo") @QueryParam("colo") String colo) {
         return super.update(request, type, entityName, colo);
     }
+
+    @POST
+    @Path("touch/{type}/{entity}")
+    @Produces({MediaType.TEXT_XML, MediaType.TEXT_PLAIN})
+    @Monitored(event = "update")
+    @Override
+    public APIResult touch(@Dimension("entityType") @PathParam("type") String type,
+                            @Dimension("entityName") @PathParam("entity") String entityName,
+                            @Dimension("colo") @QueryParam("colo") String colo) {
+        return super.touch(type, entityName, colo);
+    }
 }

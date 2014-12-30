@@ -75,6 +75,7 @@ public class FalconCLI {
     public static final String DEFINITION_OPT = "definition";
     public static final String DEPENDENCY_OPT = "dependency";
     public static final String LIST_OPT = "list";
+    public static final String TOUCH_OPT = "touch";
 
     public static final String INSTANCE_CMD = "instance";
     public static final String START_OPT = "start";
@@ -357,6 +358,10 @@ public class FalconCLI {
             validateColo(optionsList);
             EntityList entityList = client.getEntityList(entityType);
             result = entityList != null ? entityList.toString() : "No entity of type (" + entityType + ") found.";
+        } else if (optionsList.contains(TOUCH_OPT)) {
+            validateEntityName(entityName);
+            colo = getColo(colo);
+            result = client.getTouch(entityType, entityName, colo);
         } else if (optionsList.contains(HELP_CMD)) {
             OUT.get().println("Falcon Help");
         } else {
@@ -455,6 +460,8 @@ public class FalconCLI {
                 "Gets the dependencies of entity");
         Option list = new Option(LIST_OPT, false,
                 "List entities registerd for a type");
+        Option touch = new Option(TOUCH_OPT, false,
+                "Updates an entity for the given colo's forcefully");
 
         OptionGroup group = new OptionGroup();
         group.addOption(submit);
@@ -469,6 +476,7 @@ public class FalconCLI {
         group.addOption(definition);
         group.addOption(dependency);
         group.addOption(list);
+        group.addOption(touch);
 
         Option url = new Option(URL_OPTION, true, "Falcon URL");
         Option entityType = new Option(ENTITY_TYPE_OPT, true,
