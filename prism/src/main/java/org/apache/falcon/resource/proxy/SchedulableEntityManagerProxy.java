@@ -265,7 +265,7 @@ public class SchedulableEntityManagerProxy extends AbstractSchedulableEntityMana
     public APIResult touch(
             @Dimension("entityType") @PathParam("type") final String type,
             @Dimension("entityName") @PathParam("entity") final String entityName,
-            @Dimension("colo") @PathParam("colo") final String coloExpr) {
+            @Dimension("colo") @QueryParam("colo") final String coloExpr) {
         final Set<String> colosFromExp = getColosFromExpression(coloExpr, type, entityName);
         return new EntityProxy(type, entityName) {
             @Override
