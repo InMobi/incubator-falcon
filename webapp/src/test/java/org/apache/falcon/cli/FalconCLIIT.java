@@ -131,6 +131,9 @@ public class FalconCLIIT {
 
         Assert.assertEquals(0,
             executeWithURL("entity -update -name " + overlay.get("processName") + " -type process -file " + filePath));
+
+        Assert.assertEquals(0,
+                executeWithURL("entity -touch -name " + overlay.get("processName") + " -type process"));
     }
 
     public void testValidateValidCommands() throws Exception {
