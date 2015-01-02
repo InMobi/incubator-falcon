@@ -28,8 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Default task log retriever. By default checks the hadoop runningJob.
@@ -39,7 +37,7 @@ public class DefaultTaskLogRetriever extends Configured implements TaskLogURLRet
     private static final Logger LOG = LoggerFactory.getLogger(DefaultTaskLogRetriever.class);
 
     @Override
-    public List<String> retrieveTaskLogURL(String jobId) throws IOException {
+    public String retrieveTaskLogURL(String jobId) throws IOException {
         JobConf jobConf = new JobConf(getConf());
         JobClient jobClient = new JobClient(jobConf);
 
@@ -48,20 +46,18 @@ public class DefaultTaskLogRetriever extends Configured implements TaskLogURLRet
             LOG.warn("No running job for job id: {}", jobId);
             return getFromHistory(jobId);
         }
-        List<String> taskLogUrls = new ArrayList<String>();
         TaskCompletionEvent[] tasks = job.getTaskCompletionEvents(0);
         // 0th even is setup, 1 event is launcher, 2 event is cleanup
         if (tasks != null && tasks.length == 3 && tasks[1] != null) {
-            taskLogUrls.add(tasks[1].getTaskTrackerHttp() + "/tasklog?attemptid="
-                     + tasks[1].getTaskAttemptId() + "&all=true");
-            return taskLogUrls;
+            return tasks[1].getTaskTrackerHttp() + "/tasklog?attemptid="
+                    + tasks[1].getTaskAttemptId() + "&all=true";
         } else {
             LOG.warn("No running task for job: {}", jobId);
             return getFromHistory(jobId);
         }
     }
 
-    protected List<String> getFromHistory(String jodId) throws IOException {
+    protected String getFromHistory(String jodId) throws IOException {
         return null;
     }
 }

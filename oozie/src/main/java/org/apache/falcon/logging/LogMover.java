@@ -24,7 +24,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.falcon.entity.v0.EntityType;
 import org.apache.falcon.entity.v0.process.EngineType;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -56,8 +55,6 @@ import java.util.Set;
 public class LogMover extends Configured implements Tool {
 
     private static final Logger LOG = LoggerFactory.getLogger(LogMover.class);
-    private static final String YARN = "yarn";
-    private static final String MAPREDUCE_FRAMEWORK = "mapreduce.framework.name";
     public static final Set<String> FALCON_ACTIONS =
         new HashSet<String>(Arrays.asList(new String[]{"eviction", "replication", }));
 
@@ -145,18 +142,14 @@ public class LogMover extends Configured implements Tool {
 
     private void copyTTlogs(FileSystem fs, Path path,
                             WorkflowAction action) throws Exception {
-        List<String> ttLogUrls = getTTlogURL(action.getExternalId());
-        if (ttLogUrls != null) {
-            int index = 1;
-            for (String ttLogURL : ttLogUrls) {
-                LOG.info("Fetching log for action: {} from url: {}", action.getExternalId(), ttLogURL);
-                InputStream in = getURLinputStream(new URL(ttLogURL));
-                OutputStream out = fs.create(new Path(path, action.getName() + "_"
-                        + getMappedStatus(action.getStatus()) + "-" + index + ".log"));
-                IOUtils.copyBytes(in, out, 4096, true);
-                LOG.info("Copied log to {}", path);
-                index++;
-            }
+        String ttLogURL = getTTlogURL(action.getExternalId());
+        if (ttLogURL != null) {
+            LOG.info("Fetching log for action: {} from url: {}", action.getExternalId(), ttLogURL);
+            InputStream in = getURLinputStream(new URL(ttLogURL));
+            OutputStream out = fs.create(new Path(path, action.getName() + "_"
+                    + getMappedStatus(action.getStatus()) + ".log"));
+            IOUtils.copyBytes(in, out, 4096, true);
+            LOG.info("Copied log to {}", path);
         }
     }
 
@@ -211,23 +204,18 @@ public class LogMover extends Configured implements Tool {
         args.entityType = cmd.getOptionValue("entityType");
     }
 
-    private List<String> getTTlogURL(String jobId) throws Exception {
-        TaskLogURLRetriever logRetriever = ReflectionUtils.newInstance(getLogRetrieverClassName(getConf()), getConf());
+    private String getTTlogURL(String jobId) throws Exception {
+        TaskLogURLRetriever logRetriever = ReflectionUtils.newInstance(getLogRetrieverClassName(), getConf());
         return logRetriever.retrieveTaskLogURL(jobId);
     }
 
     @SuppressWarnings("unchecked")
-    private Class<? extends TaskLogURLRetriever> getLogRetrieverClassName(Configuration conf) {
+    private Class<? extends TaskLogURLRetriever> getLogRetrieverClassName() {
         try {
-            if (YARN.equals(conf.get(MAPREDUCE_FRAMEWORK))) {
-                return (Class<? extends TaskLogURLRetriever>)
-                        Class.forName("org.apache.falcon.logging.v2.TaskLogRetrieverYarn");
-            } else {
-                return (Class<? extends TaskLogURLRetriever>)
-                        Class.forName("org.apache.falcon.logging.v1.TaskLogRetrieverV1");
-            }
+            return (Class<? extends TaskLogURLRetriever>)
+                    Class.forName("org.apache.falcon.logging.v1.TaskLogRetrieverV1");
         } catch (ClassNotFoundException e) {
-            LOG.warn("V1/V2 Retriever missing, falling back to Default retriever");
+            LOG.warn("V1 Retriever missing, falling back to Default retriever");
             return DefaultTaskLogRetriever.class;
         }
     }
