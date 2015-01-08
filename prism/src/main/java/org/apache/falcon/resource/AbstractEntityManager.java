@@ -26,6 +26,7 @@ import org.apache.falcon.FalconWebException;
 import org.apache.falcon.Pair;
 import org.apache.falcon.entity.EntityNotRegisteredException;
 import org.apache.falcon.entity.EntityUtil;
+import org.apache.falcon.entity.lock.MemoryLocks;
 import org.apache.falcon.entity.parser.EntityParser;
 import org.apache.falcon.entity.parser.EntityParserFactory;
 import org.apache.falcon.entity.parser.ValidationException;
@@ -248,6 +249,7 @@ public abstract class AbstractEntityManager {
     // are referred by a single process. Sequencing them.
     public synchronized APIResult update(HttpServletRequest request, String type, String entityName, String colo) {
         checkColo(colo);
+        List<MemoryLocks.LockToken> tokenList = null;
         try {
             EntityType entityType = EntityType.valueOf(type.toUpperCase());
             audit(request, entityName, type, "UPDATE");
@@ -257,6 +259,11 @@ public abstract class AbstractEntityManager {
 
             validateUpdate(oldEntity, newEntity);
             configStore.initiateUpdate(newEntity);
+
+            tokenList = obtainUpdateEntityLocks(oldEntity);
+            if (tokenList.isEmpty()) {
+                throw new FalconException("Unable to obtain required update locks for entity: " + oldEntity.getName());
+            }
 
             StringBuilder result = new StringBuilder("Updated successfully");
             //Update in workflow engine
@@ -282,7 +289,54 @@ public abstract class AbstractEntityManager {
             throw FalconWebException.newException(e, Response.Status.BAD_REQUEST);
         } finally {
             ConfigurationStore.get().cleanupUpdateInit();
+            releaseUpdateEntityLocks(entityName, tokenList);
         }
+    }
+
+    private List<MemoryLocks.LockToken> obtainUpdateEntityLocks(Entity entity)
+        throws FalconException{
+        MemoryLocks.LockToken lockToken;
+        List<MemoryLocks.LockToken> tokenList = new ArrayList<MemoryLocks.LockToken>();
+
+        //first obtain lock for the entity for which update is issued.
+        try {
+            lockToken = configStore.getUpdateLock(entity);
+            if (lockToken == null) {
+                throw new FalconException("An update command has obtained lock on entity " + entity.getName());
+            }
+            tokenList.add(lockToken);
+        } catch (InterruptedException ie) {
+            throw new FalconException("Unable to obtain lock for entity: " + entity.getName(), ie);
+        }
+
+
+        //now obtain locks for all dependent entities.
+        Set<Entity> affectedEntities = EntityGraph.get().getDependents(entity);
+        for (Entity e : affectedEntities) {
+            try {
+                lockToken = configStore.getUpdateLock(e);
+                if (lockToken == null) {
+                    throw new FalconException("An update command has obtained lock on dependent entity " + e.getName());
+                }
+                tokenList.add(lockToken);
+            } catch (InterruptedException ie) {
+                throw new FalconException("Unable to obtain lock for entity: " + e.getName(), ie);
+            }
+        }
+
+        return tokenList;
+    }
+
+    private void releaseUpdateEntityLocks(String entityName, List<MemoryLocks.LockToken> tokenList) {
+        if (tokenList != null && !tokenList.isEmpty()) {
+            for (MemoryLocks.LockToken lockToken : tokenList) {
+                ConfigurationStore.get().releaseUpdateLock(lockToken);
+            }
+            LOG.info("All update locks released for " + entityName);
+        } else {
+            LOG.info("No locks to release for " + entityName);
+        }
+
     }
 
     private void validateUpdate(Entity oldEntity, Entity newEntity) throws FalconException {
