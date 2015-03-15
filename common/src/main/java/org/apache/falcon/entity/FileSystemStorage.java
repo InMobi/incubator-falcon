@@ -260,9 +260,9 @@ public class FileSystemStorage implements Storage {
                     FileStatus fileStatus = fileSystem.getFileStatus(path);
                     if (StringUtils.isNotBlank(fileStatus.getOwner()) && !fileStatus.getOwner().equals(owner)) {
                         LOG.error("Feed ACL owner {} doesn't match the actual file owner {} for location {}",
-                                owner, fileStatus.getOwner(), location.getPath());
+                                owner, fileStatus.getOwner(), pathString);
                         throw new FalconException("Feed ACL owner " + owner + " doesn't match the actual file owner "
-                                + fileStatus.getOwner() + " for location " + location.getPath());
+                                + fileStatus.getOwner() + " for location " + pathString);
                     }
                 }
             }
