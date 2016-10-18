@@ -28,7 +28,9 @@ import org.apache.falcon.entity.FeedHelper;
 import org.apache.falcon.entity.parser.ValidationException;
 import org.apache.falcon.entity.v0.Entity;
 import org.apache.falcon.entity.v0.EntityType;
+import org.apache.falcon.entity.v0.Frequency;
 import org.apache.falcon.entity.v0.SchemaHelper;
+import org.apache.falcon.expression.ExpressionHelper;
 import org.apache.falcon.logging.LogProvider;
 import org.apache.falcon.resource.InstancesResult.Instance;
 import org.apache.falcon.workflow.engine.AbstractWorkflowEngine;
@@ -109,10 +111,12 @@ public abstract class AbstractInstanceManager extends AbstractEntityManager {
         checkType(type);
         try {
             lifeCycles = checkAndUpdateLifeCycle(lifeCycles, type);
-            validateParams(type, entity, startStr, endStr);
-            Date start = EntityUtil.parseDateUTC(startStr);
-            Date end = getEndDate(start, endStr);
             Entity entityObject = EntityUtil.getEntity(type, entity);
+            Pair<Date, Date> dates = getStartAndEndDate(entityObject, startStr, endStr);
+            Date start = dates.first;
+            Date end = dates.second;
+
+            validateParams(type, entity, SchemaHelper.formatDateUTC(start), SchemaHelper.formatDateUTC(end));
             // LifeCycle lifeCycleObject = EntityUtil.getLifeCycle(lifeCycle);
             AbstractWorkflowEngine wfEngine = getWorkflowEngine();
             return wfEngine.getStatus(
@@ -321,6 +325,53 @@ public abstract class AbstractInstanceManager extends AbstractEntityManager {
         return props;
     }
 
+    /**
+     * Get appropriate start and end dates.
+     *
+     * If both start and end dates are null then end date is now and startDate is 10 instances before.
+     * If any one of start Date and end Date is null then other one is adjusted accordingly to return
+     * 10 instances of the entity.
+     * @param startStr  startDate as a string
+     * @param endStr endDate as a string
+     * @return a pair of (startDate, EndDate) values after setting appropriate defaults
+     * @throws FalconException
+     */
+    Pair<Date, Date> getStartAndEndDate(Entity entity, String startStr, String endStr) throws FalconException{
+        Date maxStart = getMaxClusterStartDate(entity);
+        Date minEnd = getMinClusterEndDate(entity);
+
+        if (startStr != null && endStr != null){
+            return new Pair<Date, Date>(SchemaHelper.parseDateUTC(startStr), SchemaHelper.parseDateUTC(endStr));
+        }else {
+            Frequency frequency = EntityUtil.getFrequency(entity);
+            ExpressionHelper evaluator = ExpressionHelper.get();
+            Long interval = ExpressionHelper.get().evaluate(frequency.toString(), Long.class);
+
+            Date startDate;
+            Date endDate;
+
+            if (startStr == null && endStr == null){
+                endDate = new Date();
+                endDate = endDate.before(minEnd) ? endDate : minEnd;
+                startDate = new Date(endDate.getTime() - 10 * interval);
+                startDate = startDate.after(maxStart) ? startDate : maxStart;
+
+            } else if (endStr != null) {
+                endDate = SchemaHelper.parseDateUTC(endStr);
+                startDate = new Date(endDate.getTime() - 10 * interval);
+                startDate = startDate.after(maxStart) ? startDate : maxStart;
+
+            }else {
+                startDate = SchemaHelper.parseDateUTC(startStr);
+                endDate = new Date(startDate.getTime() + 10 * interval);
+                endDate = endDate.before(minEnd) ? endDate : minEnd;
+            }
+
+            return new Pair<Date, Date>(startDate, endDate);
+        }
+
+    }
+
     private Date getEndDate(Date start, String endStr) throws FalconException {
         Date end;
         if (StringUtils.isEmpty(endStr)) {
@@ -339,6 +390,30 @@ public abstract class AbstractInstanceManager extends AbstractEntityManager {
 
         Entity entityObject = EntityUtil.getEntity(type, entity);
         validateDateRange(entityObject, startStr, endStr);
+    }
+
+    private Date getMaxClusterStartDate(Entity entity){
+        Set<String> clusters = EntityUtil.getClustersDefined(entity);
+        Date maxStartDate = null;
+        for(String cluster: clusters) {
+            Date clusterStartDate = EntityUtil.getStartTime(entity, cluster);
+            if (maxStartDate == null || clusterStartDate.after(maxStartDate)){
+                maxStartDate = clusterStartDate;
+            }
+        }
+        return maxStartDate;
+    }
+
+    private Date getMinClusterEndDate(Entity entity){
+        Set<String> clusters = EntityUtil.getClustersDefined(entity);
+        Date minStartDate = null;
+        for(String cluster: clusters) {
+            Date clusterStartDate = EntityUtil.getEndTime(entity, cluster);
+            if (minStartDate == null || clusterStartDate.before(minStartDate)){
+                minStartDate = clusterStartDate;
+            }
+        }
+        return minStartDate;
     }
 
     private void validateDateRange(Entity entity, String start, String end) throws FalconException {

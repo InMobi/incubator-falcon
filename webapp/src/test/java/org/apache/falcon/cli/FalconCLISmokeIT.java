@@ -94,6 +94,8 @@ public class FalconCLISmokeIT {
                 executeWithURL("instance -status -type feed -name "
                         + overlay.get("outputFeedName") + " -start " + START_INSTANCE));
 
+        Assert.assertEquals(executeWithURL("instance -status -type feed -name " + overlay.get("outputFeedName")), 0);
+
         Assert.assertEquals(0,
                 executeWithURL("instance -running -type process -name " + overlay.get("processName")));
     }
